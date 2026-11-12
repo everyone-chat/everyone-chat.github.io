@@ -72,3 +72,10 @@ update private.settings set value = '새-코드' where key = 'invite_code';
 | 실시간 알림 | 친구 관계 알림은 당사자 본인 프로필 변경으로만 전달 (관계없는 사람에게 안 감) |
 | 지운 사진 정리 목록 | 그 대화의 두 사람과 마스터에게만 보임 |
 | 친구 코드 무작위 대입 | 10분에 10번 틀리면 10분간 잠금 |
+
+## 캐릭터 (src/look.ts, src/components/Avatar.tsx, src/components/ProfileEditor.tsx)
+
+- SVG 파츠 조합형: 성별(남/여) × 헤어 5 × 눈 5 × 코디 5 × 표정 5, 머리·눈·옷·피부 색 개별 변경
+- 저장: profiles.emoji 칸에 `a2:성별:헤어:눈:코디:표정:머리색:눈색:옷색:피부` 문자열 (DB 변경 없음)
+- 예전 캐릭터 값(a1, 이모지)은 자동으로 새 캐릭터로 변환되어 표시
+- 광장·프로필·채팅방·채팅 목록·친구 목록·멤버 관리 모두 같은 Avatar 컴포넌트 사용

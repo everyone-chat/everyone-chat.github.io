@@ -47,7 +47,7 @@ export default function Plaza({ me, profiles, now, onChangeStatus, onGreet, onKi
   }, [profiles, me, now])
 
   const n = placed.length
-  const size = n <= 5 ? 66 : n <= 10 ? 54 : n <= 16 ? 44 : 36
+  const size = n <= 5 ? 58 : n <= 10 ? 48 : n <= 16 ? 40 : 32
   const compact = n > 8
   const onlineCount = profiles.filter((p) => isOnline(p, now)).length
   const myStatus = statusOf(me.status)

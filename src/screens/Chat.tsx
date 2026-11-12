@@ -27,6 +27,12 @@ const fmtDate = (iso: string) =>
 const dayKey = (iso: string) => new Date(iso).toDateString()
 
 export default function Chat({ me, profileMap, messages, peer, now, onBack, loading, draft, onDraftChange, onSend, onDelete, onClearAll, peerReadId }: Props) {
+  // 상대가 어디까지 읽었나: 읽음 기록 + 상대가 답장을 보냈으면 그 앞 메시지는 당연히 읽은 것
+  let readUpTo = peerReadId
+  for (const m of messages) if (m.user_id === peer.id && m.id > readUpTo) readUpTo = m.id
+  // 내 메시지 중 상대가 읽은 마지막 것 → 그 아래에만 "읽음" 표시
+  let lastReadMine = 0
+  for (const m of messages) if (m.user_id === me.id && m.id <= readUpTo) lastReadMine = m.id
   const [menuId, setMenuId] = useState<number | null>(null)
   const [file, setFile] = useState<File | null>(null)
   const [preview, setPreview] = useState<string | null>(null)
@@ -220,7 +226,8 @@ export default function Chat({ me, profileMap, messages, peer, now, onBack, load
                     )}
                     </div>
                     <span className={`flex shrink-0 flex-col text-[11px] leading-tight ${mine ? 'items-end' : 'items-start'}`}>
-                      {mine && m.id > peerReadId && <span className="font-bold text-accent-deep" title="아직 안 읽음">1</span>}
+                      {mine && m.id > readUpTo && <span className="font-bold text-accent-deep">안읽음</span>}
+                      {mine && m.id === lastReadMine && <span className="text-ink-soft">읽음</span>}
                       {showTime && <span className="text-ink-soft">{fmtTime(m.created_at)}</span>}
                     </span>
                   </div>

@@ -149,6 +149,11 @@ export default function App() {
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'messages' }, (payload) => {
         const m = payload.new as Message
         setMessages((ms) => (ms.some((x) => x.id === m.id) ? ms : [...ms, m]))
+        // 상대가 답장을 보냈다 = 그 전 내 메시지는 읽었다
+        if (m.user_id !== myId) {
+          const key = `${m.user_id}:${myId}`
+          setReads((x) => ({ ...x, [key]: Math.max(x[key] ?? 0, m.id) }))
+        }
       })
       .on('postgres_changes', { event: '*', schema: 'public', table: 'chat_reads' }, (payload) => {
         const r = payload.new as ReadRow
@@ -400,6 +405,13 @@ export default function App() {
     }
     const m = data as Message
     setMessages((ms) => (ms.some((x) => x.id === m.id) ? ms : [...ms, m]))
+    // 답장을 보냈으면 그 대화의 앞 메시지는 다 읽은 것으로 기록
+    const readKey = `${myId}:${activePeer}`
+    setReads((x) => ({ ...x, [readKey]: Math.max(x[readKey] ?? 0, m.id) }))
+    supabase
+      .from('chat_reads')
+      .upsert({ user_id: myId, peer_id: activePeer, last_read_id: m.id, updated_at: new Date().toISOString() })
+      .then(({ error }) => error && console.error(error))
     // 200개를 넘어 자동 정리된 옛 메시지의 사진도 지움
     if (roomMessages.length >= PER_ROOM - 1) {
       sweepDeletedImages()

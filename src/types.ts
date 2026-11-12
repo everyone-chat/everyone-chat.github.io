@@ -8,6 +8,7 @@ export type Profile = {
   is_admin: boolean
   banned: boolean
   friend_code: string
+  friends_rev: number
   created_at: string
   last_seen: string
 }

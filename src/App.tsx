@@ -32,6 +32,7 @@ export default function App() {
   const [unread, setUnread] = useState<Record<string, number>>({})
   const [draft, setDraft] = useState('')
   const [now, setNow] = useState(() => Date.now())
+  const friendsRevRef = useRef<number | null>(null)
   const viewRef = useRef({ tab, activePeer })
   viewRef.current = { tab, activePeer }
 
@@ -115,10 +116,13 @@ export default function App() {
           return
         }
         const row = payload.new as Profile
+        // 내 친구 관계가 바뀌면(누가 나를 추가/끊음) 보이는 사람과 대화를 다시 불러옴
+        if (row.id === myId && row.friends_rev !== friendsRevRef.current) {
+          friendsRevRef.current = row.friends_rev
+          loadAll()
+        }
         setProfiles((ps) => (ps.some((p) => p.id === row.id) ? ps.map((p) => (p.id === row.id ? row : p)) : [...ps, row]))
       })
-      // 친구가 생기거나 끊기면 보이는 사람과 대화를 다시 불러옴
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'friendships' }, () => loadAll())
       .on('postgres_changes', { event: 'DELETE', schema: 'public', table: 'messages' }, (payload) => {
         const old = payload.old as { id?: number }
         setMessages((ms) => ms.filter((x) => x.id !== old.id))
@@ -197,8 +201,10 @@ export default function App() {
   }
 
   async function addFriend(code: string) {
-    const { error } = await supabase.rpc('add_friend', { p_code: code })
-    if (error) return errText(error.message, { not_found: '그 코드를 가진 친구가 없어요.', self: '내 코드예요.' }, '추가에 실패했어요.')
+    const { data, error } = await supabase.rpc('add_friend', { p_code: code })
+    if (error)
+      return errText(error.message, { self: '내 코드예요.', too_many: '너무 많이 틀렸어요. 10분 뒤에 다시 시도해 주세요.' }, '추가에 실패했어요.')
+    if (!data) return '그 코드를 가진 친구가 없어요.'
     loadAll()
     return null
   }

@@ -86,6 +86,18 @@ export default function Chat({ me, profileMap, messages, peer, now, onBack, load
     return () => URL.revokeObjectURL(u)
   }, [file])
   const listRef = useRef<HTMLDivElement>(null)
+  const sendRef = useRef<HTMLButtonElement>(null)
+  // 휴대폰: 보내기 버튼 터치가 입력창 포커스를 빼앗지 않도록 (passive가 아닌 리스너여야 막을 수 있음)
+  useEffect(() => {
+    const b = sendRef.current
+    if (!b) return
+    const onTouch = (e: TouchEvent) => {
+      e.preventDefault()
+      b.form?.requestSubmit()
+    }
+    b.addEventListener('touchstart', onTouch, { passive: false })
+    return () => b.removeEventListener('touchstart', onTouch)
+  }, [])
   const inputRef = useRef<HTMLInputElement>(null)
   const nearBottom = useRef(true)
   const [sending, setSending] = useState(false)
@@ -125,7 +137,7 @@ export default function Chat({ me, profileMap, messages, peer, now, onBack, load
     if (ok) {
       onDraftChange('')
       setFile(null)
-      inputRef.current?.focus()
+      if (document.activeElement !== inputRef.current) inputRef.current?.focus({ preventScroll: true })
     } else setError(file ? '사진 전송에 실패했어요. 다시 시도해 주세요.' : '전송에 실패했어요. 다시 시도해 주세요.')
   }
 
@@ -298,6 +310,10 @@ export default function Chat({ me, profileMap, messages, peer, now, onBack, load
             className="min-w-0 flex-1 rounded-full border-2 border-white bg-white px-4 py-2.5 text-base outline-none focus:border-accent"
           />
           <button
+            // 보내기 버튼을 눌러도 입력창 포커스를 뺏지 않음 → 휴대폰 자판이 닫혔다 다시 열리며 화면이 출렁이지 않게
+            onPointerDown={(e) => e.preventDefault()}
+            onMouseDown={(e) => e.preventDefault()}
+            ref={sendRef}
             disabled={(!draft.trim() && !file) || sending}
             className="squish grid h-11 w-11 shrink-0 place-items-center rounded-full bg-accent text-lg text-white shadow-[0_3px_0_var(--color-accent-deep)] disabled:opacity-40"
             aria-label="보내기"

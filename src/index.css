@@ -1,8 +1,8 @@
 @import "tailwindcss";
 
 @theme {
-  --font-cute: "Jua", "Gowun Dodum", system-ui, sans-serif;
-  --font-body: "Gowun Dodum", system-ui, -apple-system, sans-serif;
+  --font-cute: "Jua", "Pretendard Variable", system-ui, sans-serif;
+  --font-body: "Pretendard Variable", Pretendard, system-ui, -apple-system, sans-serif;
   --color-ink: #4A4560;
   --color-ink-soft: #8C86A3;
   --color-sky: #CFE9FF;

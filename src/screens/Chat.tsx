@@ -101,7 +101,7 @@ export default function Chat({ me, profileMap, messages, onlineCount, loading, d
               <div className={`flex items-end gap-2 ${mine ? 'justify-end' : ''} ${grouped ? 'mt-1' : 'mt-3'}`}>
                 {!mine && (
                   <div className="w-9 shrink-0 self-start">
-                    {!grouped && <Avatar emoji={author?.emoji ?? '❔'} color={author?.color ?? '#eee'} size={36} />}
+                    {!grouped && <Avatar look={author?.emoji ?? ''} color={author?.color ?? '#eee'} size={36} headOnly />}
                   </div>
                 )}
                 <div className={`flex max-w-[75%] flex-col ${mine ? 'items-end' : 'items-start'}`}>

@@ -36,12 +36,12 @@ export default function Me({ me, onSaveProfile, onChangeStatus }: Props) {
         <section className="rounded-[28px] border-2 border-white bg-white/70 p-5 shadow-[0_8px_24px_rgba(120,110,170,0.1)]">
           <ProfileEditor
             nickname={nickname}
-            emoji={emoji}
+            look={emoji}
             color={color}
             onChange={(v) => {
               setNotice('')
               if (v.nickname !== undefined) setNickname(v.nickname)
-              if (v.emoji) setEmoji(v.emoji)
+              if (v.look) setEmoji(v.look)
               if (v.color) setColor(v.color)
             }}
           />

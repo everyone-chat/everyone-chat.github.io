@@ -1,18 +1,42 @@
 import Avatar from './Avatar'
-import { COLORS, EMOJIS } from '../types'
+import { COLORS } from '../types'
+import { HAIR_COLORS, HAIR_STYLES, SKINS, encodeLook, parseLook, type Look } from '../look'
 
 type Props = {
   nickname: string
-  emoji: string
+  look: string
   color: string
-  onChange: (v: { nickname?: string; emoji?: string; color?: string }) => void
+  onChange: (v: { nickname?: string; look?: string; color?: string }) => void
 }
 
-export default function ProfileEditor({ nickname, emoji, color, onChange }: Props) {
+function Swatches({ colors, value, onPick, label }: { colors: string[]; value: number; onPick: (i: number) => void; label: string }) {
+  return (
+    <div className="w-full">
+      <span className="mb-1.5 block text-sm text-ink-soft">{label}</span>
+      <div className="flex flex-wrap gap-2">
+        {colors.map((c, i) => (
+          <button
+            key={c}
+            type="button"
+            onClick={() => onPick(i)}
+            className={`squish h-10 w-10 rounded-full border-[3px] ${i === value ? 'border-accent' : 'border-white'}`}
+            style={{ background: c }}
+            aria-label={`${label} ${i + 1}`}
+          />
+        ))}
+      </div>
+    </div>
+  )
+}
+
+export default function ProfileEditor({ nickname, look, color, onChange }: Props) {
+  const l = parseLook(look)
+  const set = (patch: Partial<Look>) => onChange({ look: encodeLook({ ...l, ...patch }) })
+
   return (
     <div className="flex flex-col items-center gap-5">
       <div className="bob">
-        <Avatar emoji={emoji} color={color} size={96} />
+        <Avatar look={look} color={color} size={104} />
       </div>
 
       <label className="w-full">
@@ -27,39 +51,27 @@ export default function ProfileEditor({ nickname, emoji, color, onChange }: Prop
       </label>
 
       <div className="w-full">
-        <span className="mb-1.5 block text-sm text-ink-soft">캐릭터</span>
-        <div className="grid grid-cols-6 gap-2">
-          {EMOJIS.map((e) => (
+        <span className="mb-1.5 block text-sm text-ink-soft">헤어스타일</span>
+        <div className="grid grid-cols-4 gap-2">
+          {HAIR_STYLES.map((h) => (
             <button
-              key={e}
+              key={h.id}
               type="button"
-              onClick={() => onChange({ emoji: e })}
-              className={`squish grid aspect-square place-items-center rounded-2xl text-2xl ${
-                e === emoji ? 'bg-white shadow-[0_0_0_3px_var(--color-accent)]' : 'bg-white/60'
+              onClick={() => set({ hair: h.id })}
+              className={`squish flex flex-col items-center rounded-2xl pb-1.5 pt-2 ${
+                h.id === l.hair ? 'bg-white shadow-[0_0_0_3px_var(--color-accent)]' : 'bg-white/60'
               }`}
-              aria-label={`캐릭터 ${e}`}
             >
-              {e}
+              <Avatar look={encodeLook({ ...l, hair: h.id })} color={color} size={44} headOnly />
+              <span className="mt-1 text-xs">{h.label}</span>
             </button>
           ))}
         </div>
       </div>
 
-      <div className="w-full">
-        <span className="mb-1.5 block text-sm text-ink-soft">옷 색깔</span>
-        <div className="flex justify-between gap-2">
-          {COLORS.map((c) => (
-            <button
-              key={c}
-              type="button"
-              onClick={() => onChange({ color: c })}
-              className={`squish h-11 w-11 rounded-full border-[3px] ${c === color ? 'border-accent' : 'border-white'}`}
-              style={{ background: c }}
-              aria-label={`색 ${c}`}
-            />
-          ))}
-        </div>
-      </div>
+      <Swatches label="머리색" colors={HAIR_COLORS} value={l.hairColor} onPick={(i) => set({ hairColor: i })} />
+      <Swatches label="피부색" colors={SKINS} value={l.skin} onPick={(i) => set({ skin: i })} />
+      <Swatches label="옷 색깔" colors={COLORS} value={Math.max(0, COLORS.indexOf(color))} onPick={(i) => onChange({ color: COLORS[i] })} />
     </div>
   )
 }

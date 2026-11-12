@@ -1,7 +1,8 @@
 import { useState } from 'react'
 import { supabase } from '../supabase'
 import ProfileEditor from '../components/ProfileEditor'
-import { COLORS, EMOJIS, type Profile } from '../types'
+import { COLORS, type Profile } from '../types'
+import { encodeLook, randomLook } from '../look'
 import Sky from '../components/Sky'
 
 type Props = { onJoined: (p: Profile) => void }
@@ -10,7 +11,7 @@ export default function Entry({ onJoined }: Props) {
   const [step, setStep] = useState<'code' | 'profile'>('code')
   const [code, setCode] = useState('')
   const [nickname, setNickname] = useState('')
-  const [emoji, setEmoji] = useState(EMOJIS[Math.floor(Math.random() * EMOJIS.length)])
+  const [emoji, setEmoji] = useState(() => encodeLook(randomLook()))
   const [color, setColor] = useState(COLORS[Math.floor(Math.random() * COLORS.length)])
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
@@ -115,11 +116,11 @@ export default function Entry({ onJoined }: Props) {
               <h2 className="text-center font-cute text-xl">나를 꾸며요</h2>
               <ProfileEditor
                 nickname={nickname}
-                emoji={emoji}
+                look={emoji}
                 color={color}
                 onChange={(v) => {
                   if (v.nickname !== undefined) setNickname(v.nickname)
-                  if (v.emoji) setEmoji(v.emoji)
+                  if (v.look) setEmoji(v.look)
                   if (v.color) setColor(v.color)
                 }}
               />

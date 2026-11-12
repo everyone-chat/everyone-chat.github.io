@@ -99,7 +99,7 @@ export default function Plaza({ me, profiles, now, onChangeStatus, onGreet }: Pr
                   {!compact && <span className="ml-1">{st.label}</span>}
                 </span>
                 <span className="bob" style={{ animationDelay: `-${delay}s`, opacity: online || isMe ? 1 : 0.6 }}>
-                  <Avatar emoji={p.emoji} color={p.color} size={size} sleeping={p.status === 'sleep'} />
+                  <Avatar look={p.emoji} color={p.color} size={size} sleeping={p.status === 'sleep'} />
                 </span>
                 <span
                   className={`mt-0.5 flex max-w-[90px] items-center gap-1 truncate rounded-full px-2 py-0.5 text-xs ${
@@ -124,7 +124,7 @@ export default function Plaza({ me, profiles, now, onChangeStatus, onGreet }: Pr
       {sel && (
         <Sheet onClose={() => setSelected(null)}>
           <div className="flex flex-col items-center gap-3 pb-4">
-            <Avatar emoji={sel.emoji} color={sel.color} size={84} />
+            <Avatar look={sel.emoji} color={sel.color} size={84} />
             <div className="text-center">
               <h2 className="font-cute text-2xl">{sel.id === me.id ? `${sel.nickname} (나)` : sel.nickname}</h2>
               <p className="mt-1 text-ink-soft">

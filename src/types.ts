@@ -29,7 +29,6 @@ export const STATUSES = [
 
 export const statusOf = (id: string) => STATUSES.find((s) => s.id === id) ?? STATUSES[0]
 
-export const EMOJIS = ['🐻', '🐰', '🐱', '🐶', '🐼', '🦊', '🐸', '🐥', '🐨', '🐷', '🐹', '🦄']
 
 export const COLORS = ['#FFD6E0', '#FFE8B6', '#C9F2D9', '#CDE7FF', '#E3D7FF', '#FFD9C2']
 

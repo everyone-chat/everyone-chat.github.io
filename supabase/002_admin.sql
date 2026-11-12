@@ -119,3 +119,54 @@ drop policy if exists "messages_delete" on public.messages;
 create policy "messages_delete" on public.messages
   for delete to authenticated
   using ((user_id = auth.uid() and public.is_member()) or public.is_admin());
+
+-- =========================================================
+-- 입장 화면에서 마스터 코드를 넣어도 바로 마스터로 입장
+-- =========================================================
+create or replace function public.verify_invite(p_code text)
+returns boolean
+language sql stable security definer
+set search_path = ''
+as $$
+  select exists (
+    select 1 from private.settings
+    where key in ('invite_code', 'admin_code') and value = trim(p_code)
+  );
+$$;
+
+create or replace function public.join_community(
+  p_code text, p_nickname text, p_emoji text, p_color text
+)
+returns public.profiles
+language plpgsql security definer
+set search_path = ''
+as $$
+declare
+  result public.profiles;
+  master boolean;
+begin
+  if auth.uid() is null then
+    raise exception 'not_signed_in';
+  end if;
+  master := exists (select 1 from private.settings where key = 'admin_code' and value = trim(p_code));
+  if not master and exists (select 1 from public.profiles where id = auth.uid() and banned) then
+    raise exception 'banned';
+  end if;
+  if not public.verify_invite(p_code) then
+    raise exception 'invalid_code';
+  end if;
+
+  insert into public.profiles (id, nickname, emoji, color, approved, is_admin)
+  values (auth.uid(), trim(p_nickname), p_emoji, p_color, true, master)
+  on conflict (id) do update
+    set nickname = excluded.nickname,
+        emoji    = excluded.emoji,
+        color    = excluded.color,
+        approved = true,
+        banned   = false,
+        is_admin = public.profiles.is_admin or excluded.is_admin
+  returning * into result;
+
+  return result;
+end;
+$$;

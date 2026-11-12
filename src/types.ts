@@ -23,7 +23,7 @@ export type Message = {
   created_at: string
 }
 
-export type Tab = 'plaza' | 'chat' | 'me'
+export type Tab = 'plaza' | 'room' | 'chat' | 'me'
 
 export const STATUSES = [
   { id: 'rest', label: '쉬는 중', icon: '☕' },

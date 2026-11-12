@@ -10,12 +10,14 @@ type Props = {
   onAdd: (code: string) => Promise<string | null>
   onRemove: (p: Profile) => Promise<boolean>
   onKick: (p: Profile) => Promise<boolean>
+  banned: Profile[]
+  onUnban: (p: Profile) => Promise<boolean>
 }
 
 const box = 'mt-5 rounded-[28px] border-2 border-white bg-white/70 p-5'
 const field = 'min-w-0 flex-1 rounded-2xl border-2 border-white bg-white px-4 py-2.5 outline-none focus:border-accent'
 
-export default function FriendsPanel({ me, friends, allMembers, onSetCode, onAdd, onRemove, onKick }: Props) {
+export default function FriendsPanel({ me, friends, allMembers, onSetCode, onAdd, onRemove, onKick, banned, onUnban }: Props) {
   const [editing, setEditing] = useState(false)
   const [myCode, setMyCode] = useState(me.friend_code)
   const [codeMsg, setCodeMsg] = useState('')
@@ -168,6 +170,25 @@ export default function FriendsPanel({ me, friends, allMembers, onSetCode, onAdd
                 </li>
               ))}
           </ul>
+
+          {banned.length > 0 && (
+            <>
+              <h3 className="mb-2 mt-5 text-sm text-ink-soft">내보낸 멤버 {banned.length}명</h3>
+              <ul className="flex flex-col gap-2">
+                {banned.map((m) => (
+                  <li key={m.id} className="flex items-center gap-3 rounded-2xl bg-white/50 px-3 py-2">
+                    <span className="opacity-50">
+                      <Avatar look={m.emoji} color={m.color} size={36} headOnly />
+                    </span>
+                    <span className="min-w-0 flex-1 truncate text-ink-soft">{m.nickname}</span>
+                    <button onClick={() => onUnban(m)} className="squish rounded-full bg-accent px-3 py-1 text-xs text-white">
+                      다시 들이기
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            </>
+          )}
         </section>
       )}
     </>

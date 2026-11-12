@@ -15,9 +15,11 @@ type Props = {
   onAddFriend: (code: string) => Promise<string | null>
   onRemoveFriend: (p: Profile) => Promise<boolean>
   onKick: (p: Profile) => Promise<boolean>
+  banned: Profile[]
+  onUnban: (p: Profile) => Promise<boolean>
 }
 
-export default function Me({ me, onSaveProfile, onChangeStatus, onClaimAdmin, onLeave, friends, allMembers, onSetCode, onAddFriend, onRemoveFriend, onKick }: Props) {
+export default function Me({ me, onSaveProfile, onChangeStatus, onClaimAdmin, onLeave, friends, allMembers, onSetCode, onAddFriend, onRemoveFriend, onKick, banned, onUnban }: Props) {
   const [adminOpen, setAdminOpen] = useState(false)
   const [adminCode, setAdminCode] = useState('')
   const [adminNotice, setAdminNotice] = useState('')
@@ -77,6 +79,8 @@ export default function Me({ me, onSaveProfile, onChangeStatus, onClaimAdmin, on
           onAdd={onAddFriend}
           onRemove={onRemoveFriend}
           onKick={onKick}
+          banned={banned}
+          onUnban={onUnban}
         />
 
         <section className="mt-5 rounded-[28px] border-2 border-white bg-white/70 p-5">

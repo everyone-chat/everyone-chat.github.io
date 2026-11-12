@@ -166,6 +166,7 @@ export default function App() {
     [profiles, friendIds, myId],
   )
   const allMembers = useMemo(() => profiles.filter((p) => p.approved), [profiles])
+  const bannedMembers = useMemo(() => profiles.filter((p) => p.banned), [profiles])
   const lastByPeer = useMemo(() => {
     const map = new Map<string, Message>()
     if (myId) for (const m of messages) map.set(peerOf(m, myId), m)
@@ -227,6 +228,16 @@ export default function App() {
       return false
     }
     setProfiles((ps) => ps.map((x) => (x.id === p.id ? { ...x, approved: false, banned: true } : x)))
+    return true
+  }
+
+  async function unban(p: Profile) {
+    const { error } = await supabase.rpc('unban_member', { p_user: p.id })
+    if (error) {
+      console.error(error)
+      return false
+    }
+    setProfiles((ps) => ps.map((x) => (x.id === p.id ? { ...x, approved: true, banned: false } : x)))
     return true
   }
 
@@ -363,6 +374,9 @@ export default function App() {
           <div className="text-5xl">🚪</div>
           <p className="mt-3 font-cute text-xl">내보내졌어요</p>
           <p className="mt-1 text-sm text-ink-soft">다시 들어오려면 방 주인에게 물어봐 주세요.</p>
+          <button onClick={() => location.reload()} className="squish mt-4 rounded-2xl bg-white px-5 py-2.5 font-cute text-ink">
+            다시 들어갈 수 있는지 확인
+          </button>
         </div>
       </div>
     )
@@ -427,6 +441,8 @@ export default function App() {
             onAddFriend={addFriend}
             onRemoveFriend={removeFriend}
             onKick={kick}
+            banned={bannedMembers}
+            onUnban={unban}
           />
         )}
       </main>

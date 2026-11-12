@@ -49,7 +49,26 @@ export function imageUrl(path: string) {
   return p
 }
 
-export async function removeImages(paths: (string | null | undefined)[]) {
-  const list = paths.filter((p): p is string => !!p)
-  if (list.length) await supabase.storage.from(BUCKET).remove(list)
+// 지워진 메시지의 사진을 서버 목록에서 받아 실제 파일까지 삭제
+// (내가 지운 것뿐 아니라 다른 사람이 지운 것, 자동 정리된 것도 포함)
+let sweeping: Promise<void> | null = null
+export function sweepDeletedImages() {
+  if (sweeping) return sweeping
+  sweeping = (async () => {
+    try {
+      const { data, error } = await supabase.rpc('list_pending_image_deletes')
+      if (error) throw error
+      const list = ((data as string[] | null) ?? []).filter(Boolean)
+      if (!list.length) return
+      list.forEach((p) => urlCache.delete(p))
+      const { error: rmError } = await supabase.storage.from(BUCKET).remove(list)
+      if (rmError) throw rmError
+      await supabase.rpc('ack_image_deletes')
+    } catch (err) {
+      console.error('사진 정리 실패', err)
+    } finally {
+      sweeping = null
+    }
+  })()
+  return sweeping
 }

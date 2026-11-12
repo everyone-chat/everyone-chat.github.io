@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { supabase } from './supabase'
-import { removeImages, uploadImage } from './images'
+import { sweepDeletedImages, uploadImage } from './images'
 import Entry from './screens/Entry'
 import Plaza from './screens/Plaza'
 import Chat from './screens/Chat'
@@ -84,6 +84,7 @@ export default function App() {
     loadProfiles()
     loadMessages()
     touch()
+    sweepDeletedImages()
 
     const channel = supabase
       .channel('plaza')
@@ -99,6 +100,7 @@ export default function App() {
       .on('postgres_changes', { event: 'DELETE', schema: 'public', table: 'messages' }, (payload) => {
         const old = payload.old as { id?: number }
         setMessages((ms) => ms.filter((x) => x.id !== old.id))
+        sweepDeletedImages()
       })
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'messages' }, (payload) => {
         const m = payload.new as Message
@@ -164,7 +166,7 @@ export default function App() {
       return false
     }
     setMessages((ms) => ms.filter((x) => x.id !== id))
-    removeImages([target?.image_path]).catch(console.error)
+    if (target?.image_path) sweepDeletedImages()
     return true
   }
 
@@ -175,7 +177,7 @@ export default function App() {
       return false
     }
     setMessages([])
-    removeImages((data as (string | null)[]) ?? []).catch(console.error)
+    if (((data as (string | null)[]) ?? []).some(Boolean)) sweepDeletedImages()
     return true
   }
 
@@ -225,10 +227,14 @@ export default function App() {
     const { data, error } = await supabase.from('messages').insert({ content: text, image_path }).select().single()
     if (error || !data) {
       console.error(error)
+      // 메시지 저장에 실패하면 먼저 올라간 사진 파일도 지움
+      if (image_path) supabase.storage.from('chat-images').remove([image_path])
       return false
     }
     const m = data as Message
     setMessages((ms) => (ms.some((x) => x.id === m.id) ? ms : [...ms, m].slice(-200)))
+    // 200개를 넘어 자동 정리된 옛 메시지의 사진도 지움
+    if (messages.length >= 199) sweepDeletedImages()
     return true
   }
 

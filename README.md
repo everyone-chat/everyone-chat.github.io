@@ -7,6 +7,9 @@
 
 ## 입장 코드 바꾸기
 
+마스터: 나 탭 → 👑 멤버 관리 → "새 입장 코드" 입력 → 바꾸기 (supabase/007_invite_code.sql)
+
+또는 
 Supabase 대시보드 → SQL Editor에서 아래 한 줄 실행 (코드는 공개 저장소에 적지 말 것)
 
 ```sql

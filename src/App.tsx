@@ -231,6 +231,13 @@ export default function App() {
     return true
   }
 
+  async function setInviteCode(code: string) {
+    const { error } = await supabase.rpc('set_invite_code', { p_code: code })
+    if (error)
+      return errText(error.message, { invalid_code: '4~30자로 정해 주세요.', same_as_admin: '마스터 코드와 같으면 안 돼요.' }, '바꾸기에 실패했어요.')
+    return null
+  }
+
   async function unban(p: Profile) {
     const { error } = await supabase.rpc('unban_member', { p_user: p.id })
     if (error) {
@@ -443,6 +450,7 @@ export default function App() {
             onKick={kick}
             banned={bannedMembers}
             onUnban={unban}
+            onSetInvite={setInviteCode}
           />
         )}
       </main>

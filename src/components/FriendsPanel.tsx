@@ -12,12 +12,15 @@ type Props = {
   onKick: (p: Profile) => Promise<boolean>
   banned: Profile[]
   onUnban: (p: Profile) => Promise<boolean>
+  onSetInvite: (code: string) => Promise<string | null>
 }
 
 const box = 'mt-5 rounded-[28px] border-2 border-white bg-white/70 p-5'
 const field = 'min-w-0 flex-1 rounded-2xl border-2 border-white bg-white px-4 py-2.5 outline-none focus:border-accent'
 
-export default function FriendsPanel({ me, friends, allMembers, onSetCode, onAdd, onRemove, onKick, banned, onUnban }: Props) {
+export default function FriendsPanel({ me, friends, allMembers, onSetCode, onAdd, onRemove, onKick, banned, onUnban, onSetInvite }: Props) {
+  const [invite, setInvite] = useState('')
+  const [inviteMsg, setInviteMsg] = useState('')
   const [editing, setEditing] = useState(false)
   const [myCode, setMyCode] = useState(me.friend_code)
   const [codeMsg, setCodeMsg] = useState('')
@@ -144,6 +147,32 @@ export default function FriendsPanel({ me, friends, allMembers, onSetCode, onAdd
       {me.is_admin && (
         <section className={box}>
           <h2 className="mb-1 font-cute text-lg">👑 멤버 관리</h2>
+          <form
+            onSubmit={async (e) => {
+              e.preventDefault()
+              if (!invite.trim()) return
+              setBusy(true)
+              const err = await onSetInvite(invite)
+              setBusy(false)
+              setInviteMsg(err ?? `입장 코드를 "${invite.trim()}"(으)로 바꿨어요. 이미 들어온 멤버는 그대로예요.`)
+              if (!err) setInvite('')
+            }}
+            className="mb-1 flex gap-2"
+          >
+            <input
+              value={invite}
+              onChange={(e) => setInvite(e.target.value)}
+              placeholder="새 입장 코드"
+              maxLength={30}
+              autoCapitalize="off"
+              autoComplete="off"
+              className={field}
+            />
+            <button disabled={busy} className="squish rounded-2xl bg-ink px-4 text-sm text-white disabled:opacity-50">
+              바꾸기
+            </button>
+          </form>
+          <p className="mb-4 text-xs text-ink-soft">{inviteMsg || '새로 들어올 사람이 쓸 코드예요 (4~30자). 지금 코드는 보안상 표시하지 않아요.'}</p>
           <p className="mb-3 text-xs text-ink-soft">입장한 모든 멤버예요. 친구가 아니면 대화 내용은 볼 수 없어요.</p>
           <ul className="flex flex-col gap-2">
             {allMembers

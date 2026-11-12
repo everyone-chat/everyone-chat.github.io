@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import ProfileEditor from '../components/ProfileEditor'
+import FriendsPanel from '../components/FriendsPanel'
 import { STATUSES, type Profile } from '../types'
 
 type Props = {
@@ -8,9 +9,15 @@ type Props = {
   onChangeStatus: (status: string) => void
   onClaimAdmin: (code: string) => Promise<boolean>
   onLeave: () => Promise<void>
+  friends: Profile[]
+  allMembers: Profile[]
+  onSetCode: (code: string) => Promise<string | null>
+  onAddFriend: (code: string) => Promise<string | null>
+  onRemoveFriend: (p: Profile) => Promise<boolean>
+  onKick: (p: Profile) => Promise<boolean>
 }
 
-export default function Me({ me, onSaveProfile, onChangeStatus, onClaimAdmin, onLeave }: Props) {
+export default function Me({ me, onSaveProfile, onChangeStatus, onClaimAdmin, onLeave, friends, allMembers, onSetCode, onAddFriend, onRemoveFriend, onKick }: Props) {
   const [adminOpen, setAdminOpen] = useState(false)
   const [adminCode, setAdminCode] = useState('')
   const [adminNotice, setAdminNotice] = useState('')
@@ -62,6 +69,16 @@ export default function Me({ me, onSaveProfile, onChangeStatus, onClaimAdmin, on
           {notice && <p className="mt-2 text-center text-sm text-ink-soft">{notice}</p>}
         </section>
 
+        <FriendsPanel
+          me={me}
+          friends={friends}
+          allMembers={allMembers}
+          onSetCode={onSetCode}
+          onAdd={onAddFriend}
+          onRemove={onRemoveFriend}
+          onKick={onKick}
+        />
+
         <section className="mt-5 rounded-[28px] border-2 border-white bg-white/70 p-5">
           <h2 className="mb-3 font-cute text-lg">지금 나는…</h2>
           <div className="grid grid-cols-3 gap-2">
@@ -111,7 +128,7 @@ export default function Me({ me, onSaveProfile, onChangeStatus, onClaimAdmin, on
           )}
           {me.is_admin && (
             <p className="mt-2 text-center text-xs leading-relaxed text-ink-soft">
-              광장에서 친구를 누르면 내보낼 수 있고, 채팅에서 메시지를 누르면 누구의 메시지든 지울 수 있어요.
+              위 멤버 관리에서 누구든 내보낼 수 있고, 내 대화방에서는 상대 메시지도 지우거나 대화를 전부 비울 수 있어요.
             </p>
           )}
           {adminNotice && <p className="mt-2 text-center text-sm text-accent-deep">{adminNotice}</p>}

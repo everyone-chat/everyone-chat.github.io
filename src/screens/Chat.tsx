@@ -1,13 +1,15 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import Avatar from '../components/Avatar'
 import ChatImage from '../components/ChatImage'
-import type { Message, Profile } from '../types'
+import { isOnline, type Message, type Profile } from '../types'
 
 type Props = {
   me: Profile
   profileMap: Map<string, Profile>
   messages: Message[]
-  onlineCount: number
+  peer: Profile
+  now: number
+  onBack: () => void
   loading: boolean
   draft: string
   onDraftChange: (v: string) => void
@@ -22,7 +24,7 @@ const fmtDate = (iso: string) =>
   new Date(iso).toLocaleDateString('ko-KR', { month: 'long', day: 'numeric', weekday: 'short' })
 const dayKey = (iso: string) => new Date(iso).toDateString()
 
-export default function Chat({ me, profileMap, messages, onlineCount, loading, draft, onDraftChange, onSend, onDelete, onClearAll }: Props) {
+export default function Chat({ me, profileMap, messages, peer, now, onBack, loading, draft, onDraftChange, onSend, onDelete, onClearAll }: Props) {
   const [menuId, setMenuId] = useState<number | null>(null)
   const [file, setFile] = useState<File | null>(null)
   const [preview, setPreview] = useState<string | null>(null)
@@ -72,12 +74,15 @@ export default function Chat({ me, profileMap, messages, onlineCount, loading, d
   return (
     <div className="flex h-full flex-col bg-gradient-to-b from-[#E6F3FF] to-[#FFF4F8]">
       <header className="flex items-center justify-between border-b border-white/70 bg-white/60 px-5 pb-3 pt-5 backdrop-blur">
-        <div>
-          <h1 className="font-cute text-2xl leading-tight">모두의 채팅방</h1>
-          <p className="text-sm text-ink-soft">
-            <span className="text-[#3DBE7A]">● </span>
-            {onlineCount}명 접속 중
-          </p>
+        <div className="flex min-w-0 items-center gap-2">
+          <button onClick={onBack} className="squish -ml-2 grid h-10 w-10 shrink-0 place-items-center rounded-full text-2xl" aria-label="뒤로">
+            ‹
+          </button>
+          <Avatar look={peer.emoji} color={peer.color} size={40} headOnly />
+          <div className="min-w-0">
+            <h1 className="truncate font-cute text-xl leading-tight">{peer.nickname}</h1>
+            <p className="text-xs text-ink-soft">{isOnline(peer, now) ? <><span className="text-[#3DBE7A]">● </span>접속 중</> : '오프라인'}</p>
+          </div>
         </div>
         {me.is_admin ? (
           <button
@@ -93,11 +98,9 @@ export default function Chat({ me, profileMap, messages, onlineCount, loading, d
             }}
             className={`squish rounded-full px-3 py-2 text-xs ${confirmClear ? 'bg-[#E25A6A] text-white' : 'bg-white text-[#E25A6A]'}`}
           >
-            {confirmClear ? '정말 전부 지울까요? 한 번 더' : '🗑 전체 삭제'}
+            {confirmClear ? '정말 전부 지울까요? 한 번 더' : '🗑 대화 비우기'}
           </button>
-        ) : (
-          <span className="text-3xl">💬</span>
-        )}
+        ) : null}
       </header>
 
       <div
@@ -140,7 +143,7 @@ export default function Chat({ me, profileMap, messages, onlineCount, loading, d
                   </div>
                 )}
                 <div className={`flex max-w-[75%] flex-col ${mine ? 'items-end' : 'items-start'}`}>
-                  {!mine && !grouped && <span className="mb-1 ml-1 text-xs text-ink-soft">{author?.nickname ?? '(나간 친구)'}</span>}
+                  {!mine && !grouped && <span className="mb-1 ml-1 text-xs text-ink-soft">{author?.nickname ?? '(알 수 없음)'}</span>}
                   <div className={`flex items-end gap-1.5 ${mine ? 'flex-row-reverse' : ''}`}>
                     <div
                       onClick={() => (mine || me.is_admin) && setMenuId(menuId === m.id ? null : m.id)}

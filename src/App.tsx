@@ -4,27 +4,36 @@ import { sweepDeletedImages, uploadImage } from './images'
 import Entry from './screens/Entry'
 import Plaza from './screens/Plaza'
 import Chat from './screens/Chat'
+import ChatList from './screens/ChatList'
 import Me from './screens/Me'
 import BottomNav from './components/BottomNav'
 import Sky from './components/Sky'
-import { isOnline, type Message, type Profile, type Tab } from './types'
+import { peerOf, roomOf, type Friendship, type Message, type Profile, type Tab } from './types'
 
 type Phase = 'loading' | 'entry' | 'main' | 'error' | 'kicked'
 
 const HEARTBEAT_MS = 60_000
+const PER_ROOM = 200
+
+function errText(msg: string, map: Record<string, string>, fallback: string) {
+  for (const k of Object.keys(map)) if (msg.includes(k)) return map[k]
+  return fallback
+}
 
 export default function App() {
   const [phase, setPhase] = useState<Phase>('loading')
   const [myId, setMyId] = useState<string | null>(null)
   const [profiles, setProfiles] = useState<Profile[]>([])
+  const [friendIds, setFriendIds] = useState<string[]>([])
   const [messages, setMessages] = useState<Message[]>([])
   const [messagesLoading, setMessagesLoading] = useState(true)
   const [tab, setTab] = useState<Tab>('plaza')
-  const [unread, setUnread] = useState(0)
+  const [activePeer, setActivePeer] = useState<string | null>(null)
+  const [unread, setUnread] = useState<Record<string, number>>({})
   const [draft, setDraft] = useState('')
   const [now, setNow] = useState(() => Date.now())
-  const tabRef = useRef(tab)
-  tabRef.current = tab
+  const viewRef = useRef({ tab, activePeer })
+  viewRef.current = { tab, activePeer }
 
   // ---------- 첫 진입: 저장된 세션으로 자동 입장 ----------
   useEffect(() => {
@@ -59,17 +68,29 @@ export default function App() {
     }
   }, [])
 
-  // ---------- 데이터 불러오기 ----------
+  // ---------- 데이터 불러오기 (서버가 친구 것만 돌려줌) ----------
   const loadProfiles = useCallback(async () => {
     const { data, error } = await supabase.from('profiles').select('*').order('created_at')
     if (!error && data) setProfiles(data as Profile[])
   }, [])
 
+  const loadFriends = useCallback(async () => {
+    if (!myId) return
+    const { data, error } = await supabase.from('friendships').select('*')
+    if (!error && data) setFriendIds((data as Friendship[]).map((f) => (f.user_a === myId ? f.user_b : f.user_a)))
+  }, [myId])
+
   const loadMessages = useCallback(async () => {
-    const { data, error } = await supabase.from('messages').select('*').order('id', { ascending: false }).limit(200)
+    const { data, error } = await supabase.from('messages').select('*').order('id', { ascending: false }).limit(2000)
     if (!error && data) setMessages((data as Message[]).reverse())
     setMessagesLoading(false)
   }, [])
+
+  const loadAll = useCallback(() => {
+    loadProfiles()
+    loadFriends()
+    loadMessages()
+  }, [loadProfiles, loadFriends, loadMessages])
 
   const touch = useCallback(async () => {
     if (!myId) return
@@ -81,8 +102,7 @@ export default function App() {
   // ---------- 실시간 구독 + 접속 표시 ----------
   useEffect(() => {
     if (phase !== 'main' || !myId) return
-    loadProfiles()
-    loadMessages()
+    loadAll()
     touch()
     sweepDeletedImages()
 
@@ -97,6 +117,8 @@ export default function App() {
         const row = payload.new as Profile
         setProfiles((ps) => (ps.some((p) => p.id === row.id) ? ps.map((p) => (p.id === row.id ? row : p)) : [...ps, row]))
       })
+      // 친구가 생기거나 끊기면 보이는 사람과 대화를 다시 불러옴
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'friendships' }, () => loadAll())
       .on('postgres_changes', { event: 'DELETE', schema: 'public', table: 'messages' }, (payload) => {
         const old = payload.old as { id?: number }
         setMessages((ms) => ms.filter((x) => x.id !== old.id))
@@ -104,15 +126,15 @@ export default function App() {
       })
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'messages' }, (payload) => {
         const m = payload.new as Message
-        setMessages((ms) => (ms.some((x) => x.id === m.id) ? ms : [...ms, m].slice(-200)))
-        if (m.user_id !== myId && tabRef.current !== 'chat') setUnread((u) => u + 1)
+        setMessages((ms) => (ms.some((x) => x.id === m.id) ? ms : [...ms, m]))
+        const peer = peerOf(m, myId)
+        const v = viewRef.current
+        if (m.user_id !== myId && !(v.tab === 'chat' && v.activePeer === peer)) {
+          setUnread((u) => ({ ...u, [peer]: (u[peer] ?? 0) + 1 }))
+        }
       })
       .subscribe((status) => {
-        // 연결이 끊겼다 다시 붙으면 놓친 데이터 다시 불러오기
-        if (status === 'SUBSCRIBED') {
-          loadProfiles()
-          loadMessages()
-        }
+        if (status === 'SUBSCRIBED') loadAll()
       })
 
     const beat = setInterval(() => {
@@ -123,8 +145,7 @@ export default function App() {
       if (document.visibilityState === 'visible') {
         setNow(Date.now())
         touch()
-        loadProfiles()
-        loadMessages()
+        loadAll()
       }
     }
     document.addEventListener('visibilitychange', onVisible)
@@ -135,18 +156,69 @@ export default function App() {
       document.removeEventListener('visibilitychange', onVisible)
       supabase.removeChannel(channel)
     }
-  }, [phase, myId, loadProfiles, loadMessages, touch])
+  }, [phase, myId, loadAll, touch])
 
-  // ---------- 동작 ----------
+  // ---------- 파생 데이터 ----------
   const me = useMemo(() => profiles.find((p) => p.id === myId) ?? null, [profiles, myId])
   const profileMap = useMemo(() => new Map(profiles.map((p) => [p.id, p])), [profiles])
-  const members = useMemo(() => profiles.filter((p) => p.approved), [profiles])
-  const onlineCount = members.filter((p) => isOnline(p, now)).length
+  const friends = useMemo(
+    () => profiles.filter((p) => p.approved && p.id !== myId && friendIds.includes(p.id)),
+    [profiles, friendIds, myId],
+  )
+  const allMembers = useMemo(() => profiles.filter((p) => p.approved), [profiles])
+  const lastByPeer = useMemo(() => {
+    const map = new Map<string, Message>()
+    if (myId) for (const m of messages) map.set(peerOf(m, myId), m)
+    return map
+  }, [messages, myId])
+  const roomMessages = useMemo(
+    () => (myId && activePeer ? messages.filter((m) => peerOf(m, myId) === activePeer).slice(-PER_ROOM) : []),
+    [messages, myId, activePeer],
+  )
+  const totalUnread = friends.reduce((n, f) => n + (unread[f.id] ?? 0), 0)
+  const peerProfile = activePeer ? friends.find((f) => f.id === activePeer) ?? null : null
 
   // 마스터가 나를 내보내면 바로 안내 화면으로
   useEffect(() => {
     if (phase === 'main' && me && !me.approved && me.banned) setPhase('kicked')
   }, [phase, me])
+
+  // 보고 있던 친구와 친구가 끊기면 목록으로
+  useEffect(() => {
+    if (activePeer && !peerProfile && profiles.length > 1) setActivePeer(null)
+  }, [activePeer, peerProfile, friendIds, profiles.length])
+
+  // ---------- 동작 ----------
+  function openChat(peerId: string) {
+    setActivePeer(peerId)
+    setTab('chat')
+    setUnread((u) => ({ ...u, [peerId]: 0 }))
+  }
+
+  async function addFriend(code: string) {
+    const { error } = await supabase.rpc('add_friend', { p_code: code })
+    if (error) return errText(error.message, { not_found: '그 코드를 가진 친구가 없어요.', self: '내 코드예요.' }, '추가에 실패했어요.')
+    loadAll()
+    return null
+  }
+
+  async function removeFriend(p: Profile) {
+    const { error } = await supabase.rpc('remove_friend', { p_user: p.id })
+    if (error) return false
+    setFriendIds((ids) => ids.filter((id) => id !== p.id))
+    setMessages((ms) => ms.filter((m) => !myId || peerOf(m, myId) !== p.id))
+    if (activePeer === p.id) setActivePeer(null)
+    sweepDeletedImages()
+    return true
+  }
+
+  async function setFriendCode(code: string) {
+    const { data, error } = await supabase.rpc('set_friend_code', { p_code: code })
+    if (error)
+      return errText(error.message, { taken: '이미 다른 사람이 쓰는 코드예요.', invalid_code: '한글·영문·숫자·-·_ 2~16자로 정해 주세요.' }, '바꾸기에 실패했어요.')
+    setProfiles((ps) => ps.map((p) => (p.id === myId ? { ...p, friend_code: data as string } : p)))
+    return null
+  }
 
   async function kick(p: Profile) {
     const { error } = await supabase.rpc('kick_member', { p_user: p.id })
@@ -170,14 +242,15 @@ export default function App() {
     return true
   }
 
-  async function clearAll() {
-    const { data, error } = await supabase.rpc('clear_messages')
+  async function clearConversation() {
+    if (!activePeer || !myId) return false
+    const { error } = await supabase.rpc('clear_conversation', { p_peer: activePeer })
     if (error) {
       console.error(error)
       return false
     }
-    setMessages([])
-    if (((data as (string | null)[]) ?? []).some(Boolean)) sweepDeletedImages()
+    setMessages((ms) => ms.filter((m) => peerOf(m, myId) !== activePeer))
+    sweepDeletedImages()
     return true
   }
 
@@ -185,6 +258,7 @@ export default function App() {
     const { data, error } = await supabase.rpc('claim_admin', { p_code: code })
     if (error || !data) return false
     setProfiles((ps) => ps.map((x) => (x.id === myId ? { ...x, is_admin: true } : x)))
+    loadProfiles()
     return true
   }
 
@@ -193,8 +267,10 @@ export default function App() {
     await supabase.auth.signOut()
     setMyId(null)
     setProfiles([])
+    setFriendIds([])
     setMessages([])
     setDraft('')
+    setActivePeer(null)
     setPhase('entry')
   }
 
@@ -215,8 +291,9 @@ export default function App() {
   }
 
   async function send(text: string, file: File | null) {
+    if (!myId || !activePeer) return false
     let image_path: string | null = null
-    if (file && myId) {
+    if (file) {
       try {
         image_path = await uploadImage(myId, file)
       } catch (err) {
@@ -224,7 +301,11 @@ export default function App() {
         return false
       }
     }
-    const { data, error } = await supabase.from('messages').insert({ content: text, image_path }).select().single()
+    const { data, error } = await supabase
+      .from('messages')
+      .insert({ content: text, image_path, ...roomOf(myId, activePeer) })
+      .select()
+      .single()
     if (error || !data) {
       console.error(error)
       // 메시지 저장에 실패하면 먼저 올라간 사진 파일도 지움
@@ -232,15 +313,18 @@ export default function App() {
       return false
     }
     const m = data as Message
-    setMessages((ms) => (ms.some((x) => x.id === m.id) ? ms : [...ms, m].slice(-200)))
+    setMessages((ms) => (ms.some((x) => x.id === m.id) ? ms : [...ms, m]))
     // 200개를 넘어 자동 정리된 옛 메시지의 사진도 지움
-    if (messages.length >= 199) sweepDeletedImages()
+    if (roomMessages.length >= PER_ROOM - 1) {
+      sweepDeletedImages()
+      loadMessages()
+    }
     return true
   }
 
   function changeTab(t: Tab) {
     setTab(t)
-    if (t === 'chat') setUnread(0)
+    if (t === 'chat' && activePeer) setUnread((u) => ({ ...u, [activePeer]: 0 }))
   }
 
   // ---------- 화면 ----------
@@ -277,7 +361,7 @@ export default function App() {
         <Sky />
         <div className="relative text-center">
           <div className="text-5xl">🚪</div>
-          <p className="mt-3 font-cute text-xl">채팅방에서 내보내졌어요</p>
+          <p className="mt-3 font-cute text-xl">내보내졌어요</p>
           <p className="mt-1 text-sm text-ink-soft">다시 들어오려면 방 주인에게 물어봐 주세요.</p>
         </div>
       </div>
@@ -303,33 +387,50 @@ export default function App() {
         {tab === 'plaza' && (
           <Plaza
             me={me}
-            profiles={members}
+            profiles={[me, ...friends]}
             now={now}
             onChangeStatus={changeStatus}
-            onGreet={(p) => {
-              setDraft(`@${p.nickname} 안녕! `)
-              changeTab('chat')
-            }}
+            onGreet={(p) => openChat(p.id)}
             onKick={kick}
           />
         )}
-        {tab === 'chat' && (
-          <Chat
+        {tab === 'chat' &&
+          (peerProfile ? (
+            <Chat
+              key={peerProfile.id}
+              me={me}
+              peer={peerProfile}
+              now={now}
+              onBack={() => setActivePeer(null)}
+              profileMap={profileMap}
+              messages={roomMessages}
+              loading={messagesLoading}
+              draft={draft}
+              onDraftChange={setDraft}
+              onSend={send}
+              onDelete={deleteMessage}
+              onClearAll={clearConversation}
+            />
+          ) : (
+            <ChatList friends={friends} lastByPeer={lastByPeer} unread={unread} now={now} onOpen={openChat} onAddFriend={() => setTab('me')} />
+          ))}
+        {tab === 'me' && (
+          <Me
             me={me}
-            profileMap={profileMap}
-            messages={messages}
-            onlineCount={onlineCount}
-            loading={messagesLoading}
-            draft={draft}
-            onDraftChange={setDraft}
-            onSend={send}
-            onDelete={deleteMessage}
-            onClearAll={clearAll}
+            onSaveProfile={saveProfile}
+            onChangeStatus={changeStatus}
+            onClaimAdmin={claimAdmin}
+            onLeave={leave}
+            friends={friends}
+            allMembers={allMembers}
+            onSetCode={setFriendCode}
+            onAddFriend={addFriend}
+            onRemoveFriend={removeFriend}
+            onKick={kick}
           />
         )}
-        {tab === 'me' && <Me me={me} onSaveProfile={saveProfile} onChangeStatus={changeStatus} onClaimAdmin={claimAdmin} onLeave={leave} />}
       </main>
-      <BottomNav tab={tab} unread={unread} onChange={changeTab} />
+      <BottomNav tab={tab} unread={totalUnread} onChange={changeTab} />
     </div>
   )
 }

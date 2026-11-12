@@ -61,7 +61,7 @@ export default function Plaza({ me, profiles, now, onChangeStatus, onGreet, onKi
         <div>
           <h1 className="font-cute text-2xl leading-tight">우리 광장</h1>
           <p className="text-sm text-ink-soft">
-            {profiles.length}명 · <span className="text-[#3DBE7A]">● </span>
+            친구 {profiles.length - 1}명 · <span className="text-[#3DBE7A]">● </span>
             {onlineCount}명 접속 중
           </p>
         </div>
@@ -124,7 +124,7 @@ export default function Plaza({ me, profiles, now, onChangeStatus, onGreet, onKi
 
         {n === 1 && (
           <p className="absolute inset-x-0 top-[6%] text-center text-sm text-ink-soft">
-            아직 아무도 없어요. 친구에게 링크와 입장 코드를 보내 주세요!
+            아직 친구가 없어요. 나 탭에서 친구 코드로 친구를 추가해 보세요!
           </p>
         )}
       </div>
@@ -153,7 +153,7 @@ export default function Plaza({ me, profiles, now, onChangeStatus, onGreet, onKi
                 }}
                 className="squish mt-2 w-full rounded-2xl bg-accent py-3.5 font-cute text-lg text-white shadow-[0_4px_0_var(--color-accent-deep)]"
               >
-                채팅방에서 인사하기 👋
+                1:1 채팅하기 💬
               </button>
             )}
             {me.is_admin && sel.id !== me.id && !sel.is_admin && (

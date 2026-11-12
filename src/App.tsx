@@ -6,7 +6,6 @@ import Plaza from './screens/Plaza'
 import Chat from './screens/Chat'
 import ChatList from './screens/ChatList'
 import Me from './screens/Me'
-import Room from './screens/Room'
 import BottomNav from './components/BottomNav'
 import Sky from './components/Sky'
 import { peerOf, roomOf, type Friendship, type Message, type Profile, type Tab } from './types'
@@ -422,7 +421,6 @@ export default function App() {
             onKick={kick}
           />
         )}
-        {tab === 'room' && <Room me={me} />}
         {tab === 'chat' &&
           (peerProfile ? (
             <Chat

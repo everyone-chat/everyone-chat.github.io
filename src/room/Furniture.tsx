@@ -1,6 +1,7 @@
-import type { ReactNode } from 'react'
+import { useId, type ReactNode } from 'react'
 import { shade } from './geometry'
-import type { Kind } from './catalog'
+import { hueOf, type Kind } from './catalog'
+import FURN from '../character/furniture.json'
 
 // =========================================================
 // 가구 에셋 (단위: cm, 기준점 = 바닥에 닿는 가운데 (0,0), 위쪽이 음수)
@@ -278,7 +279,45 @@ const SPRITES: Record<Exclude<Kind, 'rug'>, (p: { d: number; c: string }) => Rea
   lamp: Lamp,
 }
 
+// 시트에서 잘라낸 PNG 가구의 실제 가로 크기 (cm)
+export const PNG_CM: Record<string, number> = { bed: 190, sofa: 175, desk: 135, chair: 52, cabinet: 100, rug: 215 }
+const FSIZE = FURN as unknown as Record<string, [number, number]>
+const SRC = (k: string) => `${import.meta.env.BASE_URL}parts/furn_${k}.webp`
+
+/** PNG 가구: 기준점 = 바닥 가운데 (러그는 중심) */
+export function PngFurniture({ kind, color, center }: { kind: string; color: string; center?: boolean }) {
+  const uid = useId().replace(/:/g, '')
+  const [pw, ph] = FSIZE[kind]
+  const w = PNG_CM[kind]
+  const h = (w * ph) / pw
+  const hue = hueOf(color)
+  return (
+    <g>
+      {hue !== 0 && (
+        <filter id={`hr${uid}`} colorInterpolationFilters="sRGB">
+          <feColorMatrix type="hueRotate" values={String(hue)} />
+        </filter>
+      )}
+      <image
+        href={SRC(kind)}
+        x={-w / 2}
+        y={center ? -h / 2 : -h}
+        width={w}
+        height={h}
+        preserveAspectRatio="none"
+        filter={hue !== 0 ? `url(#hr${uid})` : undefined}
+      />
+    </g>
+  )
+}
+export const pngSize = (kind: string) => {
+  const [pw, ph] = FSIZE[kind]
+  return { w: PNG_CM[kind], h: (PNG_CM[kind] * ph) / pw }
+}
+export const furnSrc = SRC
+
 export function Sprite({ kind, design, color }: { kind: Exclude<Kind, 'rug'>; design: number; color: string }) {
+  if (kind in PNG_CM) return <PngFurniture kind={kind} color={color} />
   const C = SPRITES[kind]
   return <C d={design} c={color} />
 }

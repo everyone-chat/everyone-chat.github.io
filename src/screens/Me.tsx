@@ -87,7 +87,7 @@ export default function Me({ me, onSaveProfile, onChangeStatus, onClaimAdmin, on
 
         <section className="mt-5 rounded-[28px] border-2 border-white bg-white/70 p-5">
           <h2 className="mb-3 font-cute text-lg">지금 나는…</h2>
-          <div className="grid grid-cols-3 gap-2">
+          <div className="grid grid-cols-4 gap-2">
             {STATUSES.map((s) => (
               <button
                 key={s.id}

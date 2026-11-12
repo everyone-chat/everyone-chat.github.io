@@ -23,7 +23,7 @@ export type Message = {
   created_at: string
 }
 
-export type Tab = 'plaza' | 'room' | 'chat' | 'me'
+export type Tab = 'plaza' | 'chat' | 'me'
 
 export const STATUSES = [
   { id: 'rest', label: '쉬는 중', icon: '☕' },
@@ -32,6 +32,8 @@ export const STATUSES = [
   { id: 'play', label: '노는 중', icon: '🎮' },
   { id: 'happy', label: '기분 좋음', icon: '🥰' },
   { id: 'busy', label: '바쁨', icon: '🔥' },
+  { id: 'eat', label: '밥 먹는 중', icon: '🍚' },
+  { id: 'wash', label: '씻는 중', icon: '🛁' },
 ] as const
 
 export const statusOf = (id: string) => STATUSES.find((s) => s.id === id) ?? STATUSES[0]

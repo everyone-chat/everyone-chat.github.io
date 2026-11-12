@@ -1,9 +1,10 @@
 import { useId, useRef, type ReactNode } from 'react'
-import { CharacterSvg } from '../components/Avatar'
+import { CANVAS, CharacterSvg } from '../components/Avatar'
 import type { Look } from '../look'
-import { CM_U, CM_V, H, K, W, clampUV, fromScreen, pt, scaleAt, shade, toScreen } from './geometry'
-import { FOL, RUG_SIZE, Sprite } from './Furniture'
-import type { RoomData, RoomItem } from './catalog'
+import { H, K, W, clampUV, fromScreen, pt, scaleAt, shade, toScreen } from './geometry'
+import { PngFurniture, Sprite, furnSrc, pngSize } from './Furniture'
+import { FLOOR_PATTERN, WALL_PATTERN, isPng, type RoomData, type RoomItem } from './catalog'
+import { statusOf } from '../types'
 
 const EDGE = '#A9706A'
 const FLOOR_POLY = '0,335 130,278 568,278 720,355 720,405 0,405'
@@ -12,18 +13,36 @@ const RIGHT_POLY = '640,0 720,0 720,355 568,278 568,55'
 const CEIL_POLY = '40,0 640,0 568,55 130,55'
 
 // 캐릭터 실제 키 (cm) — 가구와 같은 비율로 보이게
-const CHAR_CM = 106
+const CHAR_CM = 108
+const FIG = CANVAS.feet - CANVAS.top // 캔버스 안 캐릭터 키
+
+/** 방 안에 서 있는 사람 (나 + 친구) */
+export type Person = {
+  id: string
+  look: Look
+  status?: string
+  name: string
+  u: number
+  v: number
+  me?: boolean
+  online?: boolean
+  admin?: boolean
+}
 
 type Props = {
   data: RoomData
-  look: Look
-  sleeping?: boolean
+  people: Person[]
+  /** 가구 편집 가능 여부 (꾸미기 모드) */
+  editable?: boolean
   selected?: string | null
   onSelect?: (id: string | null) => void
   onMoveItem?: (id: string, u: number, v: number) => void
-  onMoveChar?: (u: number, v: number) => void
+  onMovePerson?: (id: string, u: number, v: number) => void
+  onTapPerson?: (id: string) => void
   className?: string
 }
+
+const FX_OF: Record<string, number> = { play: 0, busy: 2, happy: 3, rest: 4 }
 
 // ---------------------------------------------------------
 // 벽지 패턴 (색은 벽 색에서 자동으로 만든 진한 톤)
@@ -118,66 +137,14 @@ function FloorPattern({ type, color }: { type: number; color: string }) {
   )
 }
 
-// ---------------------------------------------------------
-// 러그 (바닥 평면에 붙여서 원근 그대로)
-// ---------------------------------------------------------
-function rugPoly(u: number, v: number, w: number, d: number, round: boolean) {
-  const ru = (w / 2) * CM_U
-  const rv = (d / 2) * CM_V
-  const pts = round
-    ? Array.from({ length: 32 }, (_, i) => {
-        const a = (i / 32) * Math.PI * 2
-        return toScreen(u + Math.cos(a) * ru, v + Math.sin(a) * rv)
-      })
-    : [toScreen(u - ru, v - rv), toScreen(u + ru, v - rv), toScreen(u + ru, v + rv), toScreen(u - ru, v + rv)]
-  return pts.map(pt).join(' ')
-}
-
-function Rug({ it }: { it: RoomItem }) {
-  const { w, d } = RUG_SIZE
-  if (it.design === 0)
-    return (
-      <g>
-        <polygon points={rugPoly(it.u, it.v, w, d, true)} fill={it.color} stroke={FOL} strokeWidth="1.4" />
-        <polygon points={rugPoly(it.u, it.v, w * 0.72, d * 0.72, true)} fill="none" stroke={shade(it.color, 0.45)} strokeWidth="2.4" strokeDasharray="5 4" />
-      </g>
-    )
-  if (it.design === 1)
-    return (
-      <g>
-        <polygon points={rugPoly(it.u, it.v, w, d, false)} fill={shade(it.color, -0.12)} stroke={FOL} strokeWidth="1.4" />
-        <polygon points={rugPoly(it.u, it.v, w * 0.8, d * 0.72, false)} fill={it.color} />
-        <polygon points={rugPoly(it.u, it.v, w * 0.55, d * 0.42, false)} fill="none" stroke={shade(it.color, 0.5)} strokeWidth="1.6" />
-      </g>
-    )
-  const ru = (w / 2) * CM_U
-  const rv = (d / 2) * CM_V
-  const stripes: ReactNode[] = []
-  for (let k = 0; k < 5; k++) {
-    const v1 = it.v - rv + ((2 * rv) / 5) * k
-    const v2 = v1 + (2 * rv) / 5
-    if (k % 2 === 0) continue
-    stripes.push(
-      <polygon key={k} points={[toScreen(it.u - ru, v1), toScreen(it.u + ru, v1), toScreen(it.u + ru, v2), toScreen(it.u - ru, v2)].map(pt).join(' ')} fill={shade(it.color, 0.5)} />,
-    )
-  }
-  return (
-    <g>
-      <polygon points={rugPoly(it.u, it.v, w, d, false)} fill={it.color} />
-      {stripes}
-      <polygon points={rugPoly(it.u, it.v, w, d, false)} fill="none" stroke={FOL} strokeWidth="1.4" />
-    </g>
-  )
-}
 
 // ---------------------------------------------------------
 // 장면
 // ---------------------------------------------------------
-export default function RoomScene({ data, look, sleeping, selected, onSelect, onMoveItem, onMoveChar, className }: Props) {
+export default function RoomScene({ data, people, editable, selected, onSelect, onMoveItem, onMovePerson, onTapPerson, className }: Props) {
   const uid = useId().replace(/:/g, '')
   const svgRef = useRef<SVGSVGElement>(null)
-  const drag = useRef<{ id: string; dx: number; dy: number; pointer: number } | null>(null)
-  const interactive = !!onSelect
+  const drag = useRef<{ id: string; dx: number; dy: number; pointer: number; sx: number; sy: number; moved: boolean } | null>(null)
 
   const toSvg = (e: React.PointerEvent) => {
     const svg = svgRef.current!
@@ -188,58 +155,62 @@ export default function RoomScene({ data, look, sleeping, selected, onSelect, on
   }
 
   const startDrag = (id: string, u: number, v: number) => (e: React.PointerEvent) => {
-    if (!interactive) return
+    const isPerson = id.startsWith('p:')
+    if (!isPerson && !editable) return
     e.stopPropagation()
-    onSelect?.(id)
+    if (editable || isPerson) onSelect?.(id)
     const p = toSvg(e)
     const a = toScreen(u, v)
-    drag.current = { id, dx: a.x - p.x, dy: a.y - p.y, pointer: e.pointerId }
+    drag.current = { id, dx: a.x - p.x, dy: a.y - p.y, pointer: e.pointerId, sx: e.clientX, sy: e.clientY, moved: false }
     svgRef.current?.setPointerCapture(e.pointerId)
   }
 
   const onMove = (e: React.PointerEvent) => {
     const d = drag.current
     if (!d || d.pointer !== e.pointerId) return
+    if (!d.moved && Math.hypot(e.clientX - d.sx, e.clientY - d.sy) < 6) return
+    d.moved = true
     const p = toSvg(e)
     const f = fromScreen(p.x + d.dx, p.y + d.dy)
     const c = clampUV(f.u, f.v)
-    if (d.id === 'char') onMoveChar?.(c.u, c.v)
+    if (d.id.startsWith('p:')) onMovePerson?.(d.id.slice(2), c.u, c.v)
     else onMoveItem?.(d.id, c.u, c.v)
   }
 
   const endDrag = (e: React.PointerEvent) => {
-    if (drag.current?.pointer === e.pointerId) drag.current = null
+    const d = drag.current
+    if (d?.pointer !== e.pointerId) return
+    drag.current = null
+    if (!d.moved && d.id.startsWith('p:')) onTapPerson?.(d.id.slice(2))
   }
 
   const wall = data.wall
   const floor = data.floor
+  const wp = WALL_PATTERN[wall.type] ?? 0
   const rugs = data.items.filter((i) => i.kind === 'rug').sort((a, b) => a.v - b.v)
-  const standing: ({ t: 'item'; it: RoomItem } | { t: 'char' })[] = [
-    ...data.items.filter((i) => i.kind !== 'rug').map((it) => ({ t: 'item' as const, it })),
-    { t: 'char' as const },
+  type Obj = { t: 'item'; it: RoomItem; v: number } | { t: 'person'; p: Person; v: number }
+  const standing: Obj[] = [
+    ...data.items.filter((i) => i.kind !== 'rug').map((it) => ({ t: 'item' as const, it, v: it.v })),
+    ...people.map((p) => ({ t: 'person' as const, p, v: p.v })),
   ]
-  standing.sort((a, b) => (a.t === 'char' ? data.char.v : a.it.v) - (b.t === 'char' ? data.char.v : b.it.v))
-
-  const charScale = scaleAt(data.char.v)
-  const charPos = toScreen(data.char.u, data.char.v)
-  const charW = (CHAR_CM / 150) * 100 * K * charScale
-  const charH = charW * 1.5
+  standing.sort((a, b) => a.v - b.v)
+  const cursor = (on: boolean) => ({ cursor: on ? 'grab' : undefined })
 
   return (
     <svg
       ref={svgRef}
       viewBox={`0 0 ${W} ${H}`}
       className={className}
-      style={{ touchAction: interactive ? 'none' : undefined, userSelect: 'none', display: 'block' }}
+      style={{ touchAction: 'none', userSelect: 'none', display: 'block' }}
       onPointerMove={onMove}
       onPointerUp={endDrag}
       onPointerCancel={endDrag}
-      onPointerDown={() => interactive && onSelect?.(null)}
+      onPointerDown={() => onSelect?.(null)}
     >
       <defs>
-        <WallPattern id={`wb${uid}`} type={wall.type} color={wall.color} />
-        <WallPattern id={`wl${uid}`} type={wall.type} color={shade(wall.color, 0.1)} transform="skewY(23) scale(.62 1)" />
-        <WallPattern id={`wr${uid}`} type={wall.type} color={shade(wall.color, -0.03)} transform="skewY(-24) scale(.6 1)" />
+        <WallPattern id={`wb${uid}`} type={wp} color={wall.color} />
+        <WallPattern id={`wl${uid}`} type={wp} color={shade(wall.color, 0.1)} transform="skewY(23) scale(.62 1)" />
+        <WallPattern id={`wr${uid}`} type={wp} color={shade(wall.color, -0.03)} transform="skewY(-24) scale(.6 1)" />
         <clipPath id={`fc${uid}`}>
           <polygon points={FLOOR_POLY} />
         </clipPath>
@@ -254,14 +225,13 @@ export default function RoomScene({ data, look, sleeping, selected, onSelect, on
       <rect x="130" y="55" width="438" height="223" fill={wall.color} />
       <polygon points={LEFT_POLY} fill={shade(wall.color, 0.1)} />
       <polygon points={RIGHT_POLY} fill={shade(wall.color, -0.03)} />
-      {wall.type > 0 && (
+      {wp > 0 && (
         <>
           <rect x="130" y="55" width="438" height="223" fill={`url(#wb${uid})`} />
           <polygon points={LEFT_POLY} fill={`url(#wl${uid})`} />
           <polygon points={RIGHT_POLY} fill={`url(#wr${uid})`} />
         </>
       )}
-      {/* 햇살 */}
       <polygon points="568,92 568,278 238,278" fill={`url(#sun${uid})`} />
 
       {/* 창문 (오른쪽 벽) */}
@@ -281,7 +251,7 @@ export default function RoomScene({ data, look, sleeping, selected, onSelect, on
       {/* 바닥 */}
       <polygon points={FLOOR_POLY} fill={floor.color} />
       <g clipPath={`url(#fc${uid})`}>
-        <FloorPattern type={floor.type} color={floor.color} />
+        <FloorPattern type={FLOOR_PATTERN[floor.type] ?? 0} color={floor.color} />
         <polygon points="238,278 568,278 600,405 40,405" fill="#fff" opacity=".1" />
       </g>
 
@@ -291,35 +261,64 @@ export default function RoomScene({ data, look, sleeping, selected, onSelect, on
         <path d="M130 55 L40 0 M568 55 L640 0 M130 278 L0 335 M568 278 L720 355" />
       </g>
 
-      {/* 러그 (바닥에 붙어서 항상 맨 아래) */}
-      {rugs.map((it) => (
-        <g key={it.id} onPointerDown={startDrag(it.id, it.u, it.v)} style={{ cursor: interactive ? 'grab' : undefined }}>
-          <Rug it={it} />
-          {selected === it.id && <polygon points={rugPoly(it.u, it.v, RUG_SIZE.w + 14, RUG_SIZE.d + 14, it.design === 0)} fill="none" stroke="#FF6F9C" strokeWidth="2.4" strokeDasharray="6 5" />}
-        </g>
-      ))}
+      {/* 러그 (항상 바닥) */}
+      {rugs.map((it) => {
+        const p = toScreen(it.u, it.v)
+        const sc = K * scaleAt(it.v)
+        const sz = pngSize('rug')
+        return (
+          <g key={it.id} onPointerDown={startDrag(it.id, it.u, it.v)} style={cursor(!!editable)}>
+            {selected === it.id && <ellipse cx={p.x} cy={p.y} rx={(sz.w / 2 + 10) * sc} ry={(sz.h / 2 + 8) * sc} fill="none" stroke="#FF6F9C" strokeWidth="2.4" strokeDasharray="6 5" />}
+            <g transform={`translate(${p.x.toFixed(1)} ${p.y.toFixed(1)}) scale(${sc.toFixed(3)})`}>
+              <PngFurniture kind="rug" color={it.color} center />
+            </g>
+          </g>
+        )
+      })}
 
-      {/* 서 있는 가구 + 캐릭터: 앞쪽(v가 큰 것)이 나중에 그려져서 위에 보임 */}
+      {/* 가구 + 사람: 앞쪽(v가 큰 것)이 나중에 그려져서 위에 보임 */}
       {standing.map((o) => {
-        if (o.t === 'char') {
+        if (o.t === 'person') {
+          const pr = o.p
+          const p = toScreen(pr.u, pr.v)
+          const s = scaleAt(pr.v)
+          const figPx = CHAR_CM * K * s
+          const ch = (figPx * CANVAS.h) / FIG
+          const cw = (ch * CANVAS.w) / CANVAS.h
+          const topY = p.y - figPx
+          const st = statusOf(pr.status ?? 'rest')
+          const fx = FX_OF[pr.status ?? '']
+          const tag = `${pr.admin ? '👑 ' : ''}${pr.me ? '나' : pr.name}`
+          const fs = 11 * Math.min(1.5, Math.max(0.9, s))
+          const tagW = Math.min(150, tag.length * fs * 0.95 + 22)
           return (
-            <g key="char" onPointerDown={startDrag('char', data.char.u, data.char.v)} style={{ cursor: interactive ? 'grab' : undefined }}>
-              {selected === 'char' && <ellipse cx={charPos.x} cy={charPos.y} rx={charW * 0.42} ry={charW * 0.12} fill="none" stroke="#FF6F9C" strokeWidth="2.4" strokeDasharray="6 5" />}
-              <g transform={`translate(${(charPos.x - charW / 2).toFixed(1)} ${(charPos.y - (141 / 150) * charH).toFixed(1)})`}>
-                <CharacterSvg look={look} size={charW} sleeping={sleeping} />
+            <g key={'p' + pr.id} onPointerDown={startDrag('p:' + pr.id, pr.u, pr.v)} style={{ cursor: 'grab', opacity: pr.online === false && !pr.me ? 0.8 : 1 }}>
+              {selected === 'p:' + pr.id && <ellipse cx={p.x} cy={p.y} rx={cw * 0.3} ry={cw * 0.07} fill="none" stroke="#FF6F9C" strokeWidth="2.4" strokeDasharray="6 5" />}
+              <g transform={`translate(${(p.x - cw / 2).toFixed(1)} ${(p.y - (CANVAS.feet / CANVAS.h) * ch).toFixed(1)})`}>
+                <CharacterSvg look={pr.look} size={cw} status={pr.status} />
               </g>
+              {fx != null && <image href={furnSrc('x').replace('furn_x', `fx_${fx}`)} x={p.x + cw * 0.18} y={topY - fs * 2.2} width={fs * 2} height={fs * 2} />}
+              <g transform={`translate(${p.x.toFixed(1)} ${(topY - fs * 0.6).toFixed(1)})`} style={{ pointerEvents: 'none' }}>
+                <rect x={-tagW / 2} y={-fs * 1.45} width={tagW} height={fs * 1.5} rx={fs * 0.75} fill={pr.me ? '#FF8FB1' : '#FFFFFF'} opacity=".95" />
+                <circle cx={-tagW / 2 + fs * 0.7} cy={-fs * 0.7} r={fs * 0.28} fill={pr.online || pr.me ? '#3DBE7A' : '#C9C3D6'} />
+                <text x={fs * 0.35} y={-fs * 0.3} textAnchor="middle" fontSize={fs} fill={pr.me ? '#fff' : '#4A4560'} fontFamily="Pretendard Variable, Pretendard, sans-serif">
+                  {tag}
+                </text>
+              </g>
+              <text x={p.x} y={topY - fs * 2.25} textAnchor="middle" fontSize={fs * 0.92} fill="#4A4560" style={{ pointerEvents: 'none' }} fontFamily="Pretendard Variable, Pretendard, sans-serif">
+                {st.icon} {st.label}
+              </text>
             </g>
           )
         }
         const it = o.it
         const p = toScreen(it.u, it.v)
         const sc = K * scaleAt(it.v)
+        const half = isPng(it.kind) ? pngSize(it.kind).w / 2 : it.kind === 'desk' ? 66 : 34
         return (
-          <g key={it.id} onPointerDown={startDrag(it.id, it.u, it.v)} style={{ cursor: interactive ? 'grab' : undefined }}>
-            <ellipse cx={p.x} cy={p.y} rx={(it.kind === 'bed' || it.kind === 'sofa' ? 92 : it.kind === 'desk' ? 66 : 34) * sc} ry={7 * sc} fill="#5A3E36" opacity=".12" />
-            {selected === it.id && (
-              <ellipse cx={p.x} cy={p.y} rx={(it.kind === 'bed' || it.kind === 'sofa' ? 104 : it.kind === 'desk' ? 76 : 44) * sc} ry={12 * sc} fill="none" stroke="#FF6F9C" strokeWidth="2.4" strokeDasharray="6 5" />
-            )}
+          <g key={it.id} onPointerDown={startDrag(it.id, it.u, it.v)} style={cursor(!!editable)}>
+            <ellipse cx={p.x} cy={p.y} rx={half * 0.95 * sc} ry={7 * sc} fill="#5A3E36" opacity=".12" />
+            {selected === it.id && <ellipse cx={p.x} cy={p.y} rx={(half + 10) * sc} ry={12 * sc} fill="none" stroke="#FF6F9C" strokeWidth="2.4" strokeDasharray="6 5" />}
             <g transform={`translate(${p.x.toFixed(1)} ${p.y.toFixed(1)}) scale(${(it.flip ? -sc : sc).toFixed(3)} ${sc.toFixed(3)})`}>
               <Sprite kind={it.kind as Exclude<RoomItem['kind'], 'rug'>} design={it.design} color={it.color} />
             </g>
@@ -329,3 +328,16 @@ export default function RoomScene({ data, look, sleeping, selected, onSelect, on
     </svg>
   )
 }
+
+/** 친구가 처음 들어왔을 때 자리 (겹치지 않게 앞쪽에 나란히) */
+const SPOTS = [
+  [0.22, 0.5], [0.78, 0.5], [0.34, 0.66], [0.66, 0.66], [0.12, 0.34], [0.88, 0.34],
+  [0.5, 0.72], [0.18, 0.72], [0.82, 0.72], [0.36, 0.3], [0.64, 0.3],
+]
+export function defaultSpot(i: number) {
+  if (i < SPOTS.length) return { u: SPOTS[i][0], v: SPOTS[i][1] }
+  const k = i - SPOTS.length
+  return { u: 0.1 + ((k * 0.17) % 0.8), v: 0.4 + ((k * 0.11) % 0.32) }
+}
+
+export { pt }

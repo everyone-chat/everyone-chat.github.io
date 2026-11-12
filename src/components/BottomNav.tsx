@@ -2,7 +2,6 @@ import type { Tab } from '../types'
 
 const ITEMS: { id: Tab; label: string; icon: string }[] = [
   { id: 'plaza', label: '광장', icon: '🏝️' },
-  { id: 'room', label: '방', icon: '🏠' },
   { id: 'chat', label: '채팅', icon: '💬' },
   { id: 'me', label: '나', icon: '🧸' },
 ]

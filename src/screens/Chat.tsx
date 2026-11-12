@@ -16,6 +16,8 @@ type Props = {
   onSend: (text: string, file: File | null) => Promise<boolean>
   onDelete: (id: number) => Promise<boolean>
   onClearAll: () => Promise<boolean>
+  /** 상대가 읽은 마지막 메시지 번호 (이보다 큰 내 메시지는 '1' 표시) */
+  peerReadId: number
 }
 
 const fmtTime = (iso: string) =>
@@ -24,13 +26,52 @@ const fmtDate = (iso: string) =>
   new Date(iso).toLocaleDateString('ko-KR', { month: 'long', day: 'numeric', weekday: 'short' })
 const dayKey = (iso: string) => new Date(iso).toDateString()
 
-export default function Chat({ me, profileMap, messages, peer, now, onBack, loading, draft, onDraftChange, onSend, onDelete, onClearAll }: Props) {
+export default function Chat({ me, profileMap, messages, peer, now, onBack, loading, draft, onDraftChange, onSend, onDelete, onClearAll, peerReadId }: Props) {
   const [menuId, setMenuId] = useState<number | null>(null)
   const [file, setFile] = useState<File | null>(null)
   const [preview, setPreview] = useState<string | null>(null)
   const [viewer, setViewer] = useState<string | null>(null)
   const [confirmClear, setConfirmClear] = useState(false)
   const fileRef = useRef<HTMLInputElement>(null)
+  // 꾹 누르기(0.5초) → 삭제 메뉴. 꾹 누른 직후의 클릭(사진 크게 보기 등)은 무시
+  const pressTimer = useRef<number | null>(null)
+  const pressStart = useRef<{ x: number; y: number } | null>(null)
+  const longPressed = useRef(false)
+  const cancelPress = () => {
+    if (pressTimer.current) clearTimeout(pressTimer.current)
+    pressTimer.current = null
+    pressStart.current = null
+  }
+  const pressProps = (id: number, can: boolean) =>
+    can
+      ? {
+          onPointerDown: (e: React.PointerEvent) => {
+            longPressed.current = false
+            if (e.pointerType === 'mouse') return
+            pressStart.current = { x: e.clientX, y: e.clientY }
+            pressTimer.current = window.setTimeout(() => {
+              longPressed.current = true
+              navigator.vibrate?.(15)
+              setMenuId(id)
+            }, 500)
+          },
+          onPointerMove: (e: React.PointerEvent) => {
+            const p = pressStart.current
+            if (p && Math.hypot(e.clientX - p.x, e.clientY - p.y) > 10) cancelPress()
+          },
+          onPointerUp: cancelPress,
+          onPointerCancel: cancelPress,
+          onPointerLeave: cancelPress,
+          onContextMenu: (e: React.MouseEvent) => e.preventDefault(),
+          onClickCapture: (e: React.MouseEvent) => {
+            if (longPressed.current) {
+              e.stopPropagation()
+              e.preventDefault()
+              longPressed.current = false
+            }
+          },
+        }
+      : {}
 
   useEffect(() => {
     if (!file) return setPreview(null)
@@ -51,6 +92,17 @@ export default function Chat({ me, profileMap, messages, peer, now, onBack, load
     const last = messages[messages.length - 1]
     if (nearBottom.current || last?.user_id === me.id) el.scrollTop = el.scrollHeight
   }, [messages, me.id])
+
+  // 자판이 열리거나 닫혀서 대화 칸 높이가 바뀌면, 아래를 보고 있던 경우 계속 맨 아래로
+  useEffect(() => {
+    const el = listRef.current
+    if (!el || typeof ResizeObserver === 'undefined') return
+    const ro = new ResizeObserver(() => {
+      if (nearBottom.current) el.scrollTop = el.scrollHeight
+    })
+    ro.observe(el)
+    return () => ro.disconnect()
+  }, [])
 
   useEffect(() => {
     if (draft) inputRef.current?.focus()
@@ -146,8 +198,12 @@ export default function Chat({ me, profileMap, messages, peer, now, onBack, load
                   {!mine && !grouped && <span className="mb-1 ml-1 text-xs text-ink-soft">{author?.nickname ?? '(알 수 없음)'}</span>}
                   <div className={`flex items-end gap-1.5 ${mine ? 'flex-row-reverse' : ''}`}>
                     <div
-                      onClick={() => (mine || me.is_admin) && setMenuId(menuId === m.id ? null : m.id)}
-                      className={`flex flex-col gap-1 ${mine ? 'items-end' : 'items-start'}`}
+                      {...pressProps(m.id, mine || me.is_admin)}
+                      onClick={(e) => {
+                        // PC: 클릭으로 메뉴, 휴대폰: 꾹 누르기로 메뉴
+                        if ((mine || me.is_admin) && (e.nativeEvent as PointerEvent).pointerType !== 'touch') setMenuId(menuId === m.id ? null : m.id)
+                      }}
+                      className={`no-callout flex flex-col gap-1 ${mine ? 'items-end' : 'items-start'}`}
                     >
                     {m.image_path && <ChatImage path={m.image_path} onOpen={setViewer} />}
                     {m.content && (
@@ -163,9 +219,13 @@ export default function Chat({ me, profileMap, messages, peer, now, onBack, load
                     </p>
                     )}
                     </div>
-                    {showTime && <span className="shrink-0 text-[11px] text-ink-soft">{fmtTime(m.created_at)}</span>}
+                    <span className={`flex shrink-0 flex-col text-[11px] leading-tight ${mine ? 'items-end' : 'items-start'}`}>
+                      {mine && m.id > peerReadId && <span className="font-bold text-accent-deep" title="아직 안 읽음">1</span>}
+                      {showTime && <span className="text-ink-soft">{fmtTime(m.created_at)}</span>}
+                    </span>
                   </div>
                   {menuId === m.id && (
+                    <div className="flex gap-1.5">
                     <button
                       onClick={async () => {
                         const ok = await onDelete(m.id)
@@ -174,8 +234,12 @@ export default function Chat({ me, profileMap, messages, peer, now, onBack, load
                       }}
                       className="pop mt-1 rounded-full bg-white px-3 py-1 text-xs text-[#E25A6A] shadow-sm"
                     >
-                      🗑 메시지 삭제{!mine && ' (마스터)'}
+                      🗑 {m.image_path && !m.content ? '사진' : '메시지'} 삭제{!mine && ' (마스터)'}
                     </button>
+                    <button onClick={() => setMenuId(null)} className="pop mt-1 rounded-full bg-white px-3 py-1 text-xs text-ink-soft shadow-sm">
+                      취소
+                    </button>
+                    </div>
                   )}
                 </div>
               </div>

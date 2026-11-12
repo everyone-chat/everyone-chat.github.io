@@ -9,10 +9,12 @@ import Me from './screens/Me'
 import SecretScreen from './components/SecretScreen'
 import ViewSettings from './components/ViewSettings'
 import { FRAME_CLASS, useIdle, useSettings } from './settings'
+import { useViewportHeight } from './viewport'
 import BottomNav from './components/BottomNav'
 import Sky from './components/Sky'
 import { peerOf, roomOf, type Friendship, type Message, type Profile, type Tab } from './types'
 
+type ReadRow = { user_id: string; peer_id: string; last_read_id: number }
 type Phase = 'loading' | 'entry' | 'main' | 'error' | 'kicked'
 
 const HEARTBEAT_MS = 60_000
@@ -32,16 +34,16 @@ export default function App() {
   const [messagesLoading, setMessagesLoading] = useState(true)
   const [tab, setTab] = useState<Tab>('plaza')
   const [activePeer, setActivePeer] = useState<string | null>(null)
-  const [unread, setUnread] = useState<Record<string, number>>({})
+  // 읽음 기록: `${읽은사람}:${상대}` → 마지막으로 읽은 메시지 번호
+  const [reads, setReads] = useState<Record<string, number>>({})
   const [draft, setDraft] = useState('')
   const [now, setNow] = useState(() => Date.now())
   const [settings, updateSettings] = useSettings()
+  useViewportHeight()
   const [secret, setSecret] = useState(false)
   const goSecret = useCallback(() => setSecret(true), [])
   useIdle(settings.secretOn && !secret, settings.secretMinutes, goSecret)
   const friendsRevRef = useRef<number | null>(null)
-  const viewRef = useRef({ tab, activePeer })
-  viewRef.current = { tab, activePeer }
 
   // ---------- 첫 진입: 저장된 세션으로 자동 입장 ----------
   useEffect(() => {
@@ -94,11 +96,20 @@ export default function App() {
     setMessagesLoading(false)
   }, [])
 
+  const loadReads = useCallback(async () => {
+    const { data, error } = await supabase.from('chat_reads').select('user_id, peer_id, last_read_id')
+    if (error || !data) return
+    const next: Record<string, number> = {}
+    for (const r of data as ReadRow[]) next[`${r.user_id}:${r.peer_id}`] = Number(r.last_read_id)
+    setReads(next)
+  }, [])
+
   const loadAll = useCallback(() => {
     loadProfiles()
     loadFriends()
     loadMessages()
-  }, [loadProfiles, loadFriends, loadMessages])
+    loadReads()
+  }, [loadProfiles, loadFriends, loadMessages, loadReads])
 
   const touch = useCallback(async () => {
     if (!myId) return
@@ -138,11 +149,11 @@ export default function App() {
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'messages' }, (payload) => {
         const m = payload.new as Message
         setMessages((ms) => (ms.some((x) => x.id === m.id) ? ms : [...ms, m]))
-        const peer = peerOf(m, myId)
-        const v = viewRef.current
-        if (m.user_id !== myId && !(v.tab === 'chat' && v.activePeer === peer)) {
-          setUnread((u) => ({ ...u, [peer]: (u[peer] ?? 0) + 1 }))
-        }
+      })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'chat_reads' }, (payload) => {
+        const r = payload.new as ReadRow
+        if (!r?.user_id) return
+        setReads((x) => ({ ...x, [`${r.user_id}:${r.peer_id}`]: Math.max(x[`${r.user_id}:${r.peer_id}`] ?? 0, Number(r.last_read_id)) }))
       })
       .subscribe((status) => {
         if (status === 'SUBSCRIBED') loadAll()
@@ -187,8 +198,42 @@ export default function App() {
     () => (myId && activePeer ? messages.filter((m) => peerOf(m, myId) === activePeer).slice(-PER_ROOM) : []),
     [messages, myId, activePeer],
   )
+  const unread = useMemo(() => {
+    const u: Record<string, number> = {}
+    if (!myId) return u
+    for (const m of messages) {
+      if (m.user_id === myId) continue
+      const peer = peerOf(m, myId)
+      if (m.id > (reads[`${myId}:${peer}`] ?? 0)) u[peer] = (u[peer] ?? 0) + 1
+    }
+    return u
+  }, [messages, reads, myId])
   const totalUnread = friends.reduce((n, f) => n + (unread[f.id] ?? 0), 0)
   const peerProfile = activePeer ? friends.find((f) => f.id === activePeer) ?? null : null
+
+  // 대화방을 보고 있으면 읽음 처리 (화면이 켜져 있고 시크릿 모드가 아닐 때만)
+  const readingRoom = tab === 'chat' && peerProfile && !secret ? activePeer : null
+  const lastIncoming = useMemo(() => {
+    let id = 0
+    for (const m of roomMessages) if (m.user_id !== myId && m.id > id) id = m.id
+    return id
+  }, [roomMessages, myId])
+  const [visible, setVisible] = useState(() => document.visibilityState === 'visible')
+  useEffect(() => {
+    const f = () => setVisible(document.visibilityState === 'visible')
+    document.addEventListener('visibilitychange', f)
+    return () => document.removeEventListener('visibilitychange', f)
+  }, [])
+  useEffect(() => {
+    if (!myId || !readingRoom || !visible || !lastIncoming) return
+    const key = `${myId}:${readingRoom}`
+    if ((reads[key] ?? 0) >= lastIncoming) return
+    setReads((x) => ({ ...x, [key]: lastIncoming }))
+    supabase
+      .from('chat_reads')
+      .upsert({ user_id: myId, peer_id: readingRoom, last_read_id: lastIncoming, updated_at: new Date().toISOString() })
+      .then(({ error }) => error && console.error(error))
+  }, [myId, readingRoom, visible, lastIncoming, reads])
 
   // 마스터가 나를 내보내면 바로 안내 화면으로
   useEffect(() => {
@@ -204,7 +249,6 @@ export default function App() {
   function openChat(peerId: string) {
     setActivePeer(peerId)
     setTab('chat')
-    setUnread((u) => ({ ...u, [peerId]: 0 }))
   }
 
   async function addFriend(code: string) {
@@ -258,6 +302,17 @@ export default function App() {
       return false
     }
     setProfiles((ps) => ps.map((x) => (x.id === p.id ? { ...x, approved: true, banned: false } : x)))
+    return true
+  }
+
+  async function purge(p: Profile) {
+    const { error } = await supabase.rpc('purge_member', { p_user: p.id })
+    if (error) {
+      console.error(error)
+      return false
+    }
+    setProfiles((ps) => ps.filter((x) => x.id !== p.id))
+    sweepDeletedImages()
     return true
   }
 
@@ -355,7 +410,6 @@ export default function App() {
 
   function changeTab(t: Tab) {
     setTab(t)
-    if (t === 'chat' && activePeer) setUnread((u) => ({ ...u, [activePeer]: 0 }))
   }
 
   // ---------- 화면 ----------
@@ -418,7 +472,7 @@ export default function App() {
   return (
     <>
     {secret && <SecretScreen onExit={() => setSecret(false)} />}
-    <div className={`mx-auto flex h-dvh max-w-md flex-col bg-white shadow-[0_0_40px_rgba(120,110,170,0.15)] ${FRAME_CLASS[settings.size]}`}>
+    <div className={`fixed inset-x-0 top-0 mx-auto flex h-[var(--app-h,100dvh)] max-w-md flex-col bg-white shadow-[0_0_40px_rgba(120,110,170,0.15)] ${FRAME_CLASS[settings.size]}`}>
       <main className="min-h-0 flex-1">
         {tab === 'plaza' && (
           <Plaza
@@ -446,6 +500,7 @@ export default function App() {
               onSend={send}
               onDelete={deleteMessage}
               onClearAll={clearConversation}
+              peerReadId={reads[`${peerProfile.id}:${me.id}`] ?? 0}
             />
           ) : (
             <ChatList friends={friends} lastByPeer={lastByPeer} unread={unread} now={now} onOpen={openChat} onAddFriend={() => setTab('me')} />
@@ -465,6 +520,7 @@ export default function App() {
             onKick={kick}
             banned={bannedMembers}
             onUnban={unban}
+            onPurge={purge}
             onSetInvite={setInviteCode}
             settingsPanel={<ViewSettings settings={settings} update={updateSettings} onSecretNow={goSecret} />}
           />

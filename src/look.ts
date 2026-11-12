@@ -17,9 +17,9 @@ export const SHOE_NAMES = ['검은 부츠', '흰색 운동화', '갈색 로퍼',
 export const HAT_NAMES = ['기본 헤어밴드', '리본 헤어밴드', '수면 모자', '볼캡 모자', '니트 비니']
 export const ACC_NAMES = ['둥근 안경', '사각 안경', '선글라스', '헤드폰', '작은 리본']
 
-// 0번 = 그림 원래 색
-export const HAIR_COLORS = ['', '#4A2F25', '#2A2426', '#7A3F2A', '#8A7468', '#C08A57', '#E7C27A', '#2F3150', '#E9A3B8']
-export const SKINS = ['', '#F7D6C0', '#EBBB9C', '#C98F6B']
+// 0번 = 기본 색
+export const HAIR_COLORS = ['#5A3A2E', '#4A2F25', '#2A2426', '#7A3F2A', '#8A7468', '#C08A57', '#E7C27A', '#2F3150', '#E9A3B8']
+export const SKINS = ['#FEE6D6', '#F7D6C0', '#EBBB9C', '#C98F6B']
 
 export type Look = {
   g: Gender

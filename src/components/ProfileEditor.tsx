@@ -87,7 +87,7 @@ export default function ProfileEditor({ nickname, look, color, onChange }: Props
     key === 'top' || key === 'bottom' ? l.one < 0 && l[key] === i : l[key] === i
 
   return (
-    <div className="flex flex-col items-center gap-4">
+    <div className="flex flex-col items-center gap-5">
       {/* 실시간 미리보기 */}
       <div className="bob">
         <CharacterSvg look={l} size={130} />

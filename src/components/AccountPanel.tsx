@@ -33,14 +33,14 @@ export default function AccountPanel() {
   }
 
   return (
-    <section className="mt-5 rounded-[28px] border-2 border-white bg-white/70 p-5">
-      <h2 className="mb-1 font-cute text-lg">내 계정</h2>
+    <section className="mt-7 rounded-[28px] border-2 border-white bg-white/70 px-5 py-6">
+      <h2 className="mb-2 font-cute text-lg">내 계정</h2>
       {state.anonymous ? (
         <>
           <p className="mb-3 text-xs leading-relaxed text-ink-soft">
             지금은 이 브라우저에만 저장된 임시 계정이에요. 아이디·비밀번호를 등록하면 다른 기기·브라우저에서도 같은 계정(캐릭터, 친구, 대화, 마스터 권한)으로 들어올 수 있어요.
           </p>
-          <form onSubmit={submit} className="flex flex-col gap-2">
+          <form onSubmit={submit} className="flex flex-col gap-3">
             <input value={id} onChange={(e) => setId(e.target.value)} placeholder="아이디 (영문 소문자·숫자 4~20자)" autoCapitalize="off" autoComplete="username" className={field} />
             <input value={pw} onChange={(e) => setPw(e.target.value)} type="password" placeholder="비밀번호 (6자 이상)" autoComplete="new-password" className={field} />
             <input value={pw2} onChange={(e) => setPw2(e.target.value)} type="password" placeholder="비밀번호 확인" autoComplete="new-password" className={field} />
@@ -55,7 +55,7 @@ export default function AccountPanel() {
             아이디 <b>{state.loginId}</b> 로 등록된 계정이에요.
           </p>
           {changing ? (
-            <form onSubmit={submit} className="flex flex-col gap-2">
+            <form onSubmit={submit} className="flex flex-col gap-3">
               <input value={pw} onChange={(e) => setPw(e.target.value)} type="password" placeholder="새 비밀번호 (6자 이상)" autoComplete="new-password" className={field} />
               <input value={pw2} onChange={(e) => setPw2(e.target.value)} type="password" placeholder="새 비밀번호 확인" autoComplete="new-password" className={field} />
               <button disabled={busy} className="squish mt-1 rounded-2xl bg-accent py-2.5 font-cute text-white disabled:opacity-50">

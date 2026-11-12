@@ -50,11 +50,13 @@ export function CharacterSvg({ look: l, size = 72, status, headOnly }: { look: L
   const uid = useId().replace(/:/g, '')
   const hairC = HAIR_COLORS[l.hairColor]
   const skinC = SKINS[l.skin]
-  const hf = hairC ? `url(#h${uid})` : undefined
-  const sf = skinC ? `url(#s${uid})` : undefined
+  const hf = `url(#h${uid})`
+  const sf = `url(#s${uid})`
   const pose = !headOnly && status != null ? POSE_OF[status] : undefined
   const height = headOnly ? size : (size * CANVAS.h) / CANVAS.w
   const h = `hair_${l.g}${l.hair}`
+  const ph = pose != null ? M[`posehead_${l.g}${pose}`] : undefined
+  const headShift = ph ? `translate(${ph[0]} ${ph[1]})` : undefined
 
   return (
     <svg
@@ -65,45 +67,42 @@ export function CharacterSvg({ look: l, size = 72, status, headOnly }: { look: L
       style={{ overflow: headOnly ? 'hidden' : 'visible', display: 'block' }}
     >
       <defs>
-        {hairC && <Tint id={`h${uid}`} color={hairC} />}
-        {skinC && <Tint id={`s${uid}`} color={skinC} />}
+        <Tint id={`h${uid}`} color={hairC} />
+        <Tint id={`s${uid}`} color={skinC} />
       </defs>
       {!headOnly && <ellipse cx="212" cy="626" rx="88" ry="10" fill="#5A4E7A" opacity=".12" />}
-      {pose != null ? (
+      {!headOnly && pose != null && (
         <>
           <Part name={`pose_${l.g}${pose}_skin`} filter={sf} />
-          <Part name={`pose_${l.g}${pose}_hair`} filter={hf} />
           <Part name={`pose_${l.g}${pose}_lines`} />
         </>
-      ) : (
+      )}
+      {!headOnly && pose == null && (
         <>
-          {!headOnly && (
+          <Part name={`body_${l.g}_skin`} filter={sf} />
+          <Part name={`body_${l.g}_lines`} />
+          {l.one >= 0 ? (
+            <Part name={`one_${l.g}${l.one}`} />
+          ) : (
             <>
-              <Part name="body_skin" filter={sf} />
-              <Part name="body_lines" />
-              {l.one >= 0 ? (
-                <Part name={`one_${l.one}`} />
-              ) : (
-                <>
-                  <Part name={`bottom_${l.bottom}`} />
-                  <Part name={`top_${l.top}`} />
-                </>
-              )}
-              <Part name="hands_skin" filter={sf} />
-              <Part name="hands_lines" />
-              <Part name={`shoes_${l.shoes}`} />
+              <Part name={`bottom_${l.g}${l.bottom}`} />
+              <Part name={`top_${l.g}${l.top}`} />
             </>
           )}
-          <Part name={`${h}_skin`} filter={sf} />
-          <Part name={`${h}_hair`} filter={hf} />
-          <Part name={`${h}_lines`} />
-          <Part name={l.expr === 4 ? 'expr4_eyes' : `eyes_${l.eyes}`} />
-          <Part name={`expr_${l.expr}`} />
-          <Part name={`mark_${l.expr}`} />
-          {l.acc >= 0 && <Part name={`acc_${l.acc}`} />}
-          {l.hat >= 0 && <Part name={`hat_${l.hat}`} />}
+          <Part name={`shoes_${l.shoes}`} />
         </>
       )}
+      {/* 머리는 서 있을 때 목 위, 행동 포즈일 땐 포즈의 목 위치로 옮김 */}
+      <g transform={headShift}>
+        <Part name={`${h}_skin`} filter={sf} />
+        <Part name={`${h}_hair`} filter={hf} />
+        <Part name={`${h}_lines`} />
+        <Part name={l.expr === 4 ? 'expr4_eyes' : `eyes_${l.eyes}`} />
+        <Part name={`expr_${l.expr}`} />
+        <Part name={`mark_${l.expr}`} />
+        {l.acc >= 0 && <Part name={`acc_${l.acc}`} />}
+        {l.hat >= 0 && <Part name={`hat_${l.hat}`} />}
+      </g>
     </svg>
   )
 }

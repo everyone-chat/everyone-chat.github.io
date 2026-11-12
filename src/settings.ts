@@ -71,7 +71,7 @@ export function useIdle(enabled: boolean, minutes: number, onIdle: () => void) {
 
 /** PC(넓은 화면)에서의 앱 틀 크기 */
 export const FRAME_CLASS: Record<ViewSize, string> = {
-  mini: 'md:transform-gpu md:fixed md:bottom-4 md:right-4 md:h-[min(620px,92dvh)] md:w-[340px] md:max-w-none md:overflow-hidden md:rounded-3xl md:text-[14px]',
+  mini: 'md:transform-gpu md:fixed md:bottom-4 md:right-4 md:left-auto md:top-auto md:mx-0 md:h-[min(620px,92dvh)] md:w-[340px] md:max-w-none md:overflow-hidden md:rounded-3xl md:text-[14px]',
   small: 'md:max-w-[380px]',
   normal: 'md:max-w-md',
   large: 'md:max-w-[600px]',

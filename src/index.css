@@ -75,3 +75,10 @@
 @media (prefers-reduced-motion: reduce) {
   .bob, .cloud, .pop, .sheet-up { animation: none; }
 }
+
+/* 휴대폰 자판이 열려 있을 땐 아래 메뉴 숨김 */
+@media (max-width: 767px) {
+  .kb-open .hide-on-kb { display: none; }
+}
+/* 꾹 눌러서 지우기: 길게 누를 때 기본 복사·저장 메뉴가 뜨지 않게 */
+.no-callout { -webkit-touch-callout: none; -webkit-user-select: none; user-select: none; }

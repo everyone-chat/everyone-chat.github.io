@@ -8,9 +8,9 @@ type Props = {
 
 export default function ViewSettings({ settings, update, onSecretNow }: Props) {
   return (
-    <section className="mt-5 rounded-[28px] border-2 border-white bg-white/70 p-5">
-      <h2 className="mb-1 font-cute text-lg">화면 설정</h2>
-      <p className="mb-3 text-xs text-ink-soft">이 기기에만 저장돼요.</p>
+    <section className="mt-7 rounded-[28px] border-2 border-white bg-white/70 px-5 py-6">
+      <h2 className="mb-2 font-cute text-lg">화면 설정</h2>
+      <p className="mb-4 text-xs leading-relaxed text-ink-soft">이 기기에만 저장돼요.</p>
 
       <span className="mb-1.5 block text-sm text-ink-soft">PC 화면 크기</span>
       <div className="mb-1 grid grid-cols-4 gap-1.5">

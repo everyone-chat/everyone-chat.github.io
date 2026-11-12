@@ -18,11 +18,12 @@ type Props = {
   onKick: (p: Profile) => Promise<boolean>
   banned: Profile[]
   onUnban: (p: Profile) => Promise<boolean>
+  onPurge: (p: Profile) => Promise<boolean>
   onSetInvite: (code: string) => Promise<string | null>
   settingsPanel?: React.ReactNode
 }
 
-export default function Me({ me, onSaveProfile, onChangeStatus, onClaimAdmin, onLeave, friends, allMembers, onSetCode, onAddFriend, onRemoveFriend, onKick, banned, onUnban, onSetInvite, settingsPanel }: Props) {
+export default function Me({ me, onSaveProfile, onChangeStatus, onClaimAdmin, onLeave, friends, allMembers, onSetCode, onAddFriend, onRemoveFriend, onKick, banned, onUnban, onPurge, onSetInvite, settingsPanel }: Props) {
   const [adminOpen, setAdminOpen] = useState(false)
   const [adminCode, setAdminCode] = useState('')
   const [adminNotice, setAdminNotice] = useState('')
@@ -49,10 +50,10 @@ export default function Me({ me, onSaveProfile, onChangeStatus, onClaimAdmin, on
 
   return (
     <div className="no-scrollbar h-full overflow-y-auto bg-gradient-to-b from-[#FFF0F5] to-[#EAF5FF]">
-      <div className="mx-auto max-w-md px-5 pb-8 pt-5">
-        <h1 className="mb-4 font-cute text-2xl">나</h1>
+      <div className="mx-auto max-w-md px-5 pb-12 pt-7">
+        <h1 className="mb-6 font-cute text-2xl">나</h1>
 
-        <section className="rounded-[28px] border-2 border-white bg-white/70 p-5 shadow-[0_8px_24px_rgba(120,110,170,0.1)]">
+        <section className="rounded-[28px] border-2 border-white bg-white/70 px-5 py-6 shadow-[0_8px_24px_rgba(120,110,170,0.1)]">
           <ProfileEditor
             nickname={nickname}
             look={emoji}
@@ -84,11 +85,12 @@ export default function Me({ me, onSaveProfile, onChangeStatus, onClaimAdmin, on
           onKick={onKick}
           banned={banned}
           onUnban={onUnban}
+          onPurge={onPurge}
           onSetInvite={onSetInvite}
         />
 
-        <section className="mt-5 rounded-[28px] border-2 border-white bg-white/70 p-5">
-          <h2 className="mb-3 font-cute text-lg">지금 나는…</h2>
+        <section className="mt-7 rounded-[28px] border-2 border-white bg-white/70 px-5 py-6">
+          <h2 className="mb-4 font-cute text-lg">지금 나는…</h2>
           <div className="grid grid-cols-4 gap-2">
             {STATUSES.map((s) => (
               <button
@@ -105,7 +107,7 @@ export default function Me({ me, onSaveProfile, onChangeStatus, onClaimAdmin, on
           </div>
         </section>
 
-        <section className="mt-5 rounded-[28px] border-2 border-white bg-white/70 p-5">
+        <section className="mt-7 rounded-[28px] border-2 border-white bg-white/70 px-5 py-6">
           {me.is_admin ? (
             <p className="text-center font-cute text-lg">👑 마스터 권한이 있어요</p>
           ) : !adminOpen ? (
@@ -153,7 +155,7 @@ export default function Me({ me, onSaveProfile, onChangeStatus, onClaimAdmin, on
             await onLeave()
           }}
           disabled={leaving}
-          className={`squish mt-5 w-full rounded-2xl py-3 font-cute text-base ${
+          className={`squish mt-7 w-full rounded-2xl py-3 font-cute text-base ${
             confirmLeave ? 'bg-[#E25A6A] text-white' : 'bg-white/70 text-[#E25A6A]'
           }`}
         >
@@ -165,7 +167,7 @@ export default function Me({ me, onSaveProfile, onChangeStatus, onClaimAdmin, on
           </p>
         )}
 
-        <p className="mt-5 px-2 text-xs leading-relaxed text-ink-soft">
+        <p className="mt-7 px-2 text-xs leading-relaxed text-ink-soft">
           계정은 이 브라우저에 저장돼 있어요. 브라우저 기록·사이트 데이터를 지우거나 다른 기기·다른 브라우저로 들어오면 새 친구로 다시
           입장하게 돼요.
         </p>

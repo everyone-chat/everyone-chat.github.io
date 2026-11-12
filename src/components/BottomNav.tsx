@@ -8,7 +8,7 @@ const ITEMS: { id: Tab; label: string; icon: string }[] = [
 
 export default function BottomNav({ tab, unread, onChange }: { tab: Tab; unread: number; onChange: (t: Tab) => void }) {
   return (
-    <nav className="pb-safe border-t border-white bg-white/85 px-3 pt-2 backdrop-blur">
+    <nav className="hide-on-kb pb-safe border-t border-white bg-white/85 px-3 pt-2 backdrop-blur">
       <div className="mx-auto flex max-w-md justify-between">
         {ITEMS.map((it) => {
           const active = it.id === tab

@@ -11,22 +11,25 @@
   --color-accent-deep: #F06B98;
 }
 
-html, body, #root {
-  height: 100%;
-}
+/* 기본 스타일은 base 레이어에 둬야 text-white 같은 유틸리티가 덮어쓸 수 있음 */
+@layer base {
+  html, body, #root {
+    height: 100%;
+  }
 
-body {
-  margin: 0;
-  font-family: var(--font-body);
-  color: var(--color-ink);
-  background: #EAF5FF;
-  -webkit-tap-highlight-color: transparent;
-  overscroll-behavior: none;
-  overflow: hidden;
-}
+  body {
+    margin: 0;
+    font-family: var(--font-body);
+    color: var(--color-ink);
+    background: #EAF5FF;
+    -webkit-tap-highlight-color: transparent;
+    overscroll-behavior: none;
+    overflow: hidden;
+  }
 
-button { cursor: pointer; }
-input, textarea, button { font: inherit; color: inherit; }
+  button { cursor: pointer; }
+  input, textarea, button { font: inherit; color: inherit; }
+}
 
 /* 아바타 둥실둥실 */
 @keyframes bob {

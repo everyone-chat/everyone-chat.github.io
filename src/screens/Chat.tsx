@@ -1,5 +1,6 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import Avatar from '../components/Avatar'
+import ChatImage from '../components/ChatImage'
 import type { Message, Profile } from '../types'
 
 type Props = {
@@ -10,8 +11,9 @@ type Props = {
   loading: boolean
   draft: string
   onDraftChange: (v: string) => void
-  onSend: (text: string) => Promise<boolean>
+  onSend: (text: string, file: File | null) => Promise<boolean>
   onDelete: (id: number) => Promise<boolean>
+  onClearAll: () => Promise<boolean>
 }
 
 const fmtTime = (iso: string) =>
@@ -20,8 +22,20 @@ const fmtDate = (iso: string) =>
   new Date(iso).toLocaleDateString('ko-KR', { month: 'long', day: 'numeric', weekday: 'short' })
 const dayKey = (iso: string) => new Date(iso).toDateString()
 
-export default function Chat({ me, profileMap, messages, onlineCount, loading, draft, onDraftChange, onSend, onDelete }: Props) {
+export default function Chat({ me, profileMap, messages, onlineCount, loading, draft, onDraftChange, onSend, onDelete, onClearAll }: Props) {
   const [menuId, setMenuId] = useState<number | null>(null)
+  const [file, setFile] = useState<File | null>(null)
+  const [preview, setPreview] = useState<string | null>(null)
+  const [viewer, setViewer] = useState<string | null>(null)
+  const [confirmClear, setConfirmClear] = useState(false)
+  const fileRef = useRef<HTMLInputElement>(null)
+
+  useEffect(() => {
+    if (!file) return setPreview(null)
+    const u = URL.createObjectURL(file)
+    setPreview(u)
+    return () => URL.revokeObjectURL(u)
+  }, [file])
   const listRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLInputElement>(null)
   const nearBottom = useRef(true)
@@ -43,15 +57,16 @@ export default function Chat({ me, profileMap, messages, onlineCount, loading, d
   async function submit(e: React.FormEvent) {
     e.preventDefault()
     const text = draft.trim()
-    if (!text || sending) return
+    if ((!text && !file) || sending) return
     setSending(true)
     setError('')
-    const ok = await onSend(text)
+    const ok = await onSend(text, file)
     setSending(false)
     if (ok) {
       onDraftChange('')
+      setFile(null)
       inputRef.current?.focus()
-    } else setError('전송에 실패했어요. 다시 시도해 주세요.')
+    } else setError(file ? '사진 전송에 실패했어요. 다시 시도해 주세요.' : '전송에 실패했어요. 다시 시도해 주세요.')
   }
 
   return (
@@ -64,7 +79,25 @@ export default function Chat({ me, profileMap, messages, onlineCount, loading, d
             {onlineCount}명 접속 중
           </p>
         </div>
-        <span className="text-3xl">💬</span>
+        {me.is_admin ? (
+          <button
+            onClick={async () => {
+              if (!confirmClear) {
+                setConfirmClear(true)
+                setTimeout(() => setConfirmClear(false), 4000)
+                return
+              }
+              setConfirmClear(false)
+              const ok = await onClearAll()
+              if (!ok) setError('전체 삭제에 실패했어요.')
+            }}
+            className={`squish rounded-full px-3 py-2 text-xs ${confirmClear ? 'bg-[#E25A6A] text-white' : 'bg-white text-[#E25A6A]'}`}
+          >
+            {confirmClear ? '정말 전부 지울까요? 한 번 더' : '🗑 전체 삭제'}
+          </button>
+        ) : (
+          <span className="text-3xl">💬</span>
+        )}
       </header>
 
       <div
@@ -109,8 +142,13 @@ export default function Chat({ me, profileMap, messages, onlineCount, loading, d
                 <div className={`flex max-w-[75%] flex-col ${mine ? 'items-end' : 'items-start'}`}>
                   {!mine && !grouped && <span className="mb-1 ml-1 text-xs text-ink-soft">{author?.nickname ?? '(나간 친구)'}</span>}
                   <div className={`flex items-end gap-1.5 ${mine ? 'flex-row-reverse' : ''}`}>
-                    <p
+                    <div
                       onClick={() => (mine || me.is_admin) && setMenuId(menuId === m.id ? null : m.id)}
+                      className={`flex flex-col gap-1 ${mine ? 'items-end' : 'items-start'}`}
+                    >
+                    {m.image_path && <ChatImage path={m.image_path} onOpen={setViewer} />}
+                    {m.content && (
+                    <p
                       className={`whitespace-pre-wrap break-words px-3.5 py-2 text-[15px] leading-snug shadow-sm ${
                         mine || me.is_admin ? 'cursor-pointer' : ''
                       } ${
@@ -120,6 +158,8 @@ export default function Chat({ me, profileMap, messages, onlineCount, loading, d
                     >
                       {m.content}
                     </p>
+                    )}
+                    </div>
                     {showTime && <span className="shrink-0 text-[11px] text-ink-soft">{fmtTime(m.created_at)}</span>}
                   </div>
                   {menuId === m.id && (
@@ -143,7 +183,37 @@ export default function Chat({ me, profileMap, messages, onlineCount, loading, d
 
       <form onSubmit={submit} className="border-t border-white/70 bg-white/70 px-3 py-2.5 backdrop-blur">
         {error && <p className="mb-1.5 px-2 text-xs text-accent-deep">{error}</p>}
+        {preview && (
+          <div className="mb-2 flex items-center gap-2 px-1">
+            <img src={preview} alt="보낼 사진" className="h-16 w-16 rounded-xl border-2 border-white object-cover" />
+            <button type="button" onClick={() => setFile(null)} className="rounded-full bg-white px-3 py-1 text-xs text-ink-soft">
+              취소
+            </button>
+            {sending && <span className="text-xs text-ink-soft">사진 보내는 중…</span>}
+          </div>
+        )}
         <div className="flex items-center gap-2">
+          <input
+            ref={fileRef}
+            type="file"
+            accept="image/*"
+            className="hidden"
+            onChange={(e) => {
+              const f = e.target.files?.[0] ?? null
+              e.target.value = ''
+              if (f && !f.type.startsWith('image/')) return setError('사진 파일만 보낼 수 있어요.')
+              setError('')
+              setFile(f)
+            }}
+          />
+          <button
+            type="button"
+            onClick={() => fileRef.current?.click()}
+            className="squish grid h-11 w-11 shrink-0 place-items-center rounded-full bg-white text-xl"
+            aria-label="사진 보내기"
+          >
+            📷
+          </button>
           <input
             ref={inputRef}
             value={draft}
@@ -154,7 +224,7 @@ export default function Chat({ me, profileMap, messages, onlineCount, loading, d
             className="min-w-0 flex-1 rounded-full border-2 border-white bg-white px-4 py-2.5 text-base outline-none focus:border-accent"
           />
           <button
-            disabled={!draft.trim() || sending}
+            disabled={(!draft.trim() && !file) || sending}
             className="squish grid h-11 w-11 shrink-0 place-items-center rounded-full bg-accent text-lg text-white shadow-[0_3px_0_var(--color-accent-deep)] disabled:opacity-40"
             aria-label="보내기"
           >
@@ -162,6 +232,16 @@ export default function Chat({ me, profileMap, messages, onlineCount, loading, d
           </button>
         </div>
       </form>
+
+      {viewer && (
+        <button
+          onClick={() => setViewer(null)}
+          className="fade-in fixed inset-0 z-50 grid place-items-center bg-[#2A2433]/85 p-4"
+          aria-label="사진 닫기"
+        >
+          <img src={viewer} alt="사진 크게 보기" className="max-h-full max-w-full rounded-2xl" />
+        </button>
+      )}
     </div>
   )
 }

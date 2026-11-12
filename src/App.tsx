@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { supabase } from './supabase'
+import { removeImages, uploadImage } from './images'
 import Entry from './screens/Entry'
 import Plaza from './screens/Plaza'
 import Chat from './screens/Chat'
@@ -156,12 +157,25 @@ export default function App() {
   }
 
   async function deleteMessage(id: number) {
+    const target = messages.find((x) => x.id === id)
     const { error } = await supabase.from('messages').delete().eq('id', id)
     if (error) {
       console.error(error)
       return false
     }
     setMessages((ms) => ms.filter((x) => x.id !== id))
+    removeImages([target?.image_path]).catch(console.error)
+    return true
+  }
+
+  async function clearAll() {
+    const { data, error } = await supabase.rpc('clear_messages')
+    if (error) {
+      console.error(error)
+      return false
+    }
+    setMessages([])
+    removeImages((data as (string | null)[]) ?? []).catch(console.error)
     return true
   }
 
@@ -198,8 +212,17 @@ export default function App() {
     return true
   }
 
-  async function send(text: string) {
-    const { data, error } = await supabase.from('messages').insert({ content: text }).select().single()
+  async function send(text: string, file: File | null) {
+    let image_path: string | null = null
+    if (file && myId) {
+      try {
+        image_path = await uploadImage(myId, file)
+      } catch (err) {
+        console.error(err)
+        return false
+      }
+    }
+    const { data, error } = await supabase.from('messages').insert({ content: text, image_path }).select().single()
     if (error || !data) {
       console.error(error)
       return false
@@ -295,6 +318,7 @@ export default function App() {
             onDraftChange={setDraft}
             onSend={send}
             onDelete={deleteMessage}
+            onClearAll={clearAll}
           />
         )}
         {tab === 'me' && <Me me={me} onSaveProfile={saveProfile} onChangeStatus={changeStatus} onClaimAdmin={claimAdmin} onLeave={leave} />}

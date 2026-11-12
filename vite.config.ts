@@ -2,8 +2,8 @@ import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 import tailwindcss from '@tailwindcss/vite'
 
-// GitHub Pages 주소가 /bondee-web/ 아래에 있어서 base 경로를 맞춰 둠
+// 주소: https://everyone-chat.github.io (루트에서 서비스)
 export default defineConfig({
-  base: '/bondee-web/',
+  base: '/',
   plugins: [react(), tailwindcss()],
 })

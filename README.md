@@ -1,8 +1,8 @@
-# 우리 광장 (bondee-web)
+# 우리 광장 (everyone-chat)
 
 친구들끼리 쓰는 본디 스타일 비공개 채팅 웹. GitHub Pages + Supabase 무료 플랜으로 운영.
 
-- 주소: https://eunbyeol1112.github.io/bondee-web/
+- 주소: https://everyone-chat.github.io
 - 기능: 입장 코드, 닉네임·캐릭터·색 꾸미기, 친구 광장(상태·접속 표시), 실시간 공용 채팅(최근 200개 보관)
 
 ## 입장 코드 바꾸기

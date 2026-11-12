@@ -10,6 +10,7 @@ type Props = {
   now: number
   onChangeStatus: (status: string) => void
   onGreet: (p: Profile) => void
+  onKick: (p: Profile) => Promise<boolean>
 }
 
 const GOLDEN = 2.39996
@@ -23,8 +24,10 @@ function timeAgo(iso: string, now: number) {
   return `${Math.floor(h / 24)}일 전`
 }
 
-export default function Plaza({ me, profiles, now, onChangeStatus, onGreet }: Props) {
+export default function Plaza({ me, profiles, now, onChangeStatus, onGreet, onKick }: Props) {
   const [selected, setSelected] = useState<Profile | null>(null)
+  const [confirmKick, setConfirmKick] = useState(false)
+  const [kickError, setKickError] = useState('')
   const [statusOpen, setStatusOpen] = useState(false)
 
   // 나를 가운데, 접속 중인 친구를 안쪽부터 배치
@@ -89,7 +92,11 @@ export default function Plaza({ me, profiles, now, onChangeStatus, onGreet }: Pr
             return (
               <button
                 key={p.id}
-                onClick={() => setSelected(p)}
+                onClick={() => {
+                  setSelected(p)
+                  setConfirmKick(false)
+                  setKickError('')
+                }}
                 className="pop absolute flex -translate-x-1/2 -translate-y-1/2 flex-col items-center"
                 style={{ left: `${x}%`, top: `${y}%`, zIndex: Math.round(y) }}
                 aria-label={`${p.nickname} 프로필`}
@@ -107,6 +114,7 @@ export default function Plaza({ me, profiles, now, onChangeStatus, onGreet }: Pr
                   }`}
                 >
                   <span className={`inline-block h-1.5 w-1.5 shrink-0 rounded-full ${online ? 'bg-[#3DBE7A]' : 'bg-[#C9C3D6]'}`} />
+                  {p.is_admin && <span>👑</span>}
                   <span className="truncate">{isMe ? '나' : p.nickname}</span>
                 </span>
               </button>
@@ -126,7 +134,10 @@ export default function Plaza({ me, profiles, now, onChangeStatus, onGreet }: Pr
           <div className="flex flex-col items-center gap-3 pb-4">
             <Avatar look={sel.emoji} color={sel.color} size={84} />
             <div className="text-center">
-              <h2 className="font-cute text-2xl">{sel.id === me.id ? `${sel.nickname} (나)` : sel.nickname}</h2>
+              <h2 className="font-cute text-2xl">
+                {sel.is_admin && '👑 '}
+                {sel.id === me.id ? `${sel.nickname} (나)` : sel.nickname}
+              </h2>
               <p className="mt-1 text-ink-soft">
                 {statusOf(sel.status).icon} {statusOf(sel.status).label}
               </p>
@@ -145,6 +156,22 @@ export default function Plaza({ me, profiles, now, onChangeStatus, onGreet }: Pr
                 채팅방에서 인사하기 👋
               </button>
             )}
+            {me.is_admin && sel.id !== me.id && !sel.is_admin && (
+              <button
+                onClick={async () => {
+                  if (!confirmKick) return setConfirmKick(true)
+                  const ok = await onKick(sel)
+                  if (ok) setSelected(null)
+                  else setKickError('내보내기에 실패했어요.')
+                }}
+                className={`squish w-full rounded-2xl py-3 font-cute text-base ${
+                  confirmKick ? 'bg-[#E25A6A] text-white' : 'bg-white text-[#E25A6A]'
+                }`}
+              >
+                {confirmKick ? `정말 ${sel.nickname} 님을 내보낼까요? 한 번 더 누르기` : '채팅방에서 내보내기'}
+              </button>
+            )}
+            {kickError && <p className="text-sm text-accent-deep">{kickError}</p>}
           </div>
         </Sheet>
       )}

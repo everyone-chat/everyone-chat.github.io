@@ -62,6 +62,11 @@ export default function Entry({ onJoined }: Props) {
         p_color: color,
       })
       if (error) {
+        if (error.message.includes('banned')) {
+          setStep('code')
+          setError('이 브라우저는 채팅방에서 내보내졌어요.')
+          return
+        }
         if (error.message.includes('invalid_code')) {
           setStep('code')
           setError('입장 코드가 바뀌었어요. 새 코드를 입력해 주세요.')

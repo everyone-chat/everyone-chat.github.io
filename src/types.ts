@@ -5,6 +5,8 @@ export type Profile = {
   color: string
   status: string
   approved: boolean
+  is_admin: boolean
+  banned: boolean
   created_at: string
   last_seen: string
 }

@@ -11,6 +11,7 @@ type Props = {
   draft: string
   onDraftChange: (v: string) => void
   onSend: (text: string) => Promise<boolean>
+  onDelete: (id: number) => Promise<boolean>
 }
 
 const fmtTime = (iso: string) =>
@@ -19,7 +20,8 @@ const fmtDate = (iso: string) =>
   new Date(iso).toLocaleDateString('ko-KR', { month: 'long', day: 'numeric', weekday: 'short' })
 const dayKey = (iso: string) => new Date(iso).toDateString()
 
-export default function Chat({ me, profileMap, messages, onlineCount, loading, draft, onDraftChange, onSend }: Props) {
+export default function Chat({ me, profileMap, messages, onlineCount, loading, draft, onDraftChange, onSend, onDelete }: Props) {
+  const [menuId, setMenuId] = useState<number | null>(null)
   const listRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLInputElement>(null)
   const nearBottom = useRef(true)
@@ -108,7 +110,10 @@ export default function Chat({ me, profileMap, messages, onlineCount, loading, d
                   {!mine && !grouped && <span className="mb-1 ml-1 text-xs text-ink-soft">{author?.nickname ?? '(나간 친구)'}</span>}
                   <div className={`flex items-end gap-1.5 ${mine ? 'flex-row-reverse' : ''}`}>
                     <p
+                      onClick={() => (mine || me.is_admin) && setMenuId(menuId === m.id ? null : m.id)}
                       className={`whitespace-pre-wrap break-words px-3.5 py-2 text-[15px] leading-snug shadow-sm ${
+                        mine || me.is_admin ? 'cursor-pointer' : ''
+                      } ${
                         mine ? 'rounded-[20px] rounded-br-md text-ink' : 'rounded-[20px] rounded-bl-md bg-white'
                       }`}
                       style={mine ? { background: me.color } : undefined}
@@ -117,6 +122,18 @@ export default function Chat({ me, profileMap, messages, onlineCount, loading, d
                     </p>
                     {showTime && <span className="shrink-0 text-[11px] text-ink-soft">{fmtTime(m.created_at)}</span>}
                   </div>
+                  {menuId === m.id && (
+                    <button
+                      onClick={async () => {
+                        const ok = await onDelete(m.id)
+                        setMenuId(null)
+                        if (!ok) setError('삭제에 실패했어요.')
+                      }}
+                      className="pop mt-1 rounded-full bg-white px-3 py-1 text-xs text-[#E25A6A] shadow-sm"
+                    >
+                      🗑 메시지 삭제{!mine && ' (마스터)'}
+                    </button>
+                  )}
                 </div>
               </div>
             </div>

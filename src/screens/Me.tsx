@@ -6,9 +6,16 @@ type Props = {
   me: Profile
   onSaveProfile: (v: { nickname: string; emoji: string; color: string }) => Promise<boolean>
   onChangeStatus: (status: string) => void
+  onClaimAdmin: (code: string) => Promise<boolean>
+  onLeave: () => Promise<void>
 }
 
-export default function Me({ me, onSaveProfile, onChangeStatus }: Props) {
+export default function Me({ me, onSaveProfile, onChangeStatus, onClaimAdmin, onLeave }: Props) {
+  const [adminOpen, setAdminOpen] = useState(false)
+  const [adminCode, setAdminCode] = useState('')
+  const [adminNotice, setAdminNotice] = useState('')
+  const [confirmLeave, setConfirmLeave] = useState(false)
+  const [leaving, setLeaving] = useState(false)
   const [nickname, setNickname] = useState(me.nickname)
   const [emoji, setEmoji] = useState(me.emoji)
   const [color, setColor] = useState(me.color)
@@ -72,6 +79,62 @@ export default function Me({ me, onSaveProfile, onChangeStatus }: Props) {
             ))}
           </div>
         </section>
+
+        <section className="mt-5 rounded-[28px] border-2 border-white bg-white/70 p-5">
+          {me.is_admin ? (
+            <p className="text-center font-cute text-lg">👑 마스터 권한이 있어요</p>
+          ) : !adminOpen ? (
+            <button onClick={() => setAdminOpen(true)} className="w-full text-center text-sm text-ink-soft underline">
+              마스터 코드 입력
+            </button>
+          ) : (
+            <form
+              onSubmit={async (e) => {
+                e.preventDefault()
+                if (!adminCode.trim()) return
+                const ok = await onClaimAdmin(adminCode)
+                setAdminNotice(ok ? '' : '마스터 코드가 맞지 않아요.')
+                if (ok) setAdminCode('')
+              }}
+              className="flex gap-2"
+            >
+              <input
+                value={adminCode}
+                onChange={(e) => setAdminCode(e.target.value)}
+                placeholder="마스터 코드"
+                autoCapitalize="off"
+                autoComplete="off"
+                className="min-w-0 flex-1 rounded-2xl border-2 border-white bg-white px-4 py-2.5 outline-none focus:border-accent"
+              />
+              <button className="squish rounded-2xl bg-ink px-4 font-cute text-white">확인</button>
+            </form>
+          )}
+          {me.is_admin && (
+            <p className="mt-2 text-center text-xs leading-relaxed text-ink-soft">
+              광장에서 친구를 누르면 내보낼 수 있고, 채팅에서 메시지를 누르면 누구의 메시지든 지울 수 있어요.
+            </p>
+          )}
+          {adminNotice && <p className="mt-2 text-center text-sm text-accent-deep">{adminNotice}</p>}
+        </section>
+
+        <button
+          onClick={async () => {
+            if (!confirmLeave) return setConfirmLeave(true)
+            setLeaving(true)
+            await onLeave()
+          }}
+          disabled={leaving}
+          className={`squish mt-5 w-full rounded-2xl py-3 font-cute text-base ${
+            confirmLeave ? 'bg-[#E25A6A] text-white' : 'bg-white/70 text-[#E25A6A]'
+          }`}
+        >
+          {leaving ? '나가는 중…' : confirmLeave ? '정말 나갈까요? 한 번 더 누르기' : '채팅방 나가기'}
+        </button>
+        {confirmLeave && !leaving && (
+          <p className="mt-2 text-center text-xs text-ink-soft">
+            보낸 메시지는 남아요. 나중에 입장 코드로 다시 들어올 수 있어요.
+          </p>
+        )}
 
         <p className="mt-5 px-2 text-xs leading-relaxed text-ink-soft">
           계정은 이 브라우저에 저장돼 있어요. 브라우저 기록·사이트 데이터를 지우거나 다른 기기·다른 브라우저로 들어오면 새 친구로 다시

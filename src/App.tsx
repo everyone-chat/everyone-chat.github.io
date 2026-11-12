@@ -8,7 +8,7 @@ import BottomNav from './components/BottomNav'
 import Sky from './components/Sky'
 import { isOnline, type Message, type Profile, type Tab } from './types'
 
-type Phase = 'loading' | 'entry' | 'main' | 'error'
+type Phase = 'loading' | 'entry' | 'main' | 'error' | 'kicked'
 
 const HEARTBEAT_MS = 60_000
 
@@ -40,7 +40,7 @@ export default function App() {
           setMyId(profile.id)
           setProfiles([profile as Profile])
           setPhase('main')
-        } else setPhase('entry')
+        } else setPhase(profile?.banned ? 'kicked' : 'entry')
       } catch (err) {
         console.error(err)
         if (!cancelled) setPhase('error')
@@ -95,6 +95,10 @@ export default function App() {
         const row = payload.new as Profile
         setProfiles((ps) => (ps.some((p) => p.id === row.id) ? ps.map((p) => (p.id === row.id ? row : p)) : [...ps, row]))
       })
+      .on('postgres_changes', { event: 'DELETE', schema: 'public', table: 'messages' }, (payload) => {
+        const old = payload.old as { id?: number }
+        setMessages((ms) => ms.filter((x) => x.id !== old.id))
+      })
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'messages' }, (payload) => {
         const m = payload.new as Message
         setMessages((ms) => (ms.some((x) => x.id === m.id) ? ms : [...ms, m].slice(-200)))
@@ -133,7 +137,50 @@ export default function App() {
   // ---------- 동작 ----------
   const me = useMemo(() => profiles.find((p) => p.id === myId) ?? null, [profiles, myId])
   const profileMap = useMemo(() => new Map(profiles.map((p) => [p.id, p])), [profiles])
-  const onlineCount = profiles.filter((p) => isOnline(p, now)).length
+  const members = useMemo(() => profiles.filter((p) => p.approved), [profiles])
+  const onlineCount = members.filter((p) => isOnline(p, now)).length
+
+  // 마스터가 나를 내보내면 바로 안내 화면으로
+  useEffect(() => {
+    if (phase === 'main' && me && !me.approved && me.banned) setPhase('kicked')
+  }, [phase, me])
+
+  async function kick(p: Profile) {
+    const { error } = await supabase.rpc('kick_member', { p_user: p.id })
+    if (error) {
+      console.error(error)
+      return false
+    }
+    setProfiles((ps) => ps.map((x) => (x.id === p.id ? { ...x, approved: false, banned: true } : x)))
+    return true
+  }
+
+  async function deleteMessage(id: number) {
+    const { error } = await supabase.from('messages').delete().eq('id', id)
+    if (error) {
+      console.error(error)
+      return false
+    }
+    setMessages((ms) => ms.filter((x) => x.id !== id))
+    return true
+  }
+
+  async function claimAdmin(code: string) {
+    const { data, error } = await supabase.rpc('claim_admin', { p_code: code })
+    if (error || !data) return false
+    setProfiles((ps) => ps.map((x) => (x.id === myId ? { ...x, is_admin: true } : x)))
+    return true
+  }
+
+  async function leave() {
+    await supabase.rpc('leave_community')
+    await supabase.auth.signOut()
+    setMyId(null)
+    setProfiles([])
+    setMessages([])
+    setDraft('')
+    setPhase('entry')
+  }
 
   async function changeStatus(status: string) {
     if (!myId) return
@@ -195,6 +242,19 @@ export default function App() {
     )
   }
 
+  if (phase === 'kicked') {
+    return (
+      <div className="relative grid h-dvh place-items-center px-6">
+        <Sky />
+        <div className="relative text-center">
+          <div className="text-5xl">🚪</div>
+          <p className="mt-3 font-cute text-xl">채팅방에서 내보내졌어요</p>
+          <p className="mt-1 text-sm text-ink-soft">다시 들어오려면 방 주인에게 물어봐 주세요.</p>
+        </div>
+      </div>
+    )
+  }
+
   if (phase === 'entry' || !me) {
     return (
       <Entry
@@ -214,13 +274,14 @@ export default function App() {
         {tab === 'plaza' && (
           <Plaza
             me={me}
-            profiles={profiles}
+            profiles={members}
             now={now}
             onChangeStatus={changeStatus}
             onGreet={(p) => {
               setDraft(`@${p.nickname} 안녕! `)
               changeTab('chat')
             }}
+            onKick={kick}
           />
         )}
         {tab === 'chat' && (
@@ -233,9 +294,10 @@ export default function App() {
             draft={draft}
             onDraftChange={setDraft}
             onSend={send}
+            onDelete={deleteMessage}
           />
         )}
-        {tab === 'me' && <Me me={me} onSaveProfile={saveProfile} onChangeStatus={changeStatus} />}
+        {tab === 'me' && <Me me={me} onSaveProfile={saveProfile} onChangeStatus={changeStatus} onClaimAdmin={claimAdmin} onLeave={leave} />}
       </main>
       <BottomNav tab={tab} unread={unread} onChange={changeTab} />
     </div>

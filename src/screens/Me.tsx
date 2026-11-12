@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import ProfileEditor from '../components/ProfileEditor'
 import FriendsPanel from '../components/FriendsPanel'
+import AccountPanel from '../components/AccountPanel'
 import { STATUSES, type Profile } from '../types'
 
 type Props = {
@@ -140,6 +141,8 @@ export default function Me({ me, onSaveProfile, onChangeStatus, onClaimAdmin, on
           )}
           {adminNotice && <p className="mt-2 text-center text-sm text-accent-deep">{adminNotice}</p>}
         </section>
+
+        <AccountPanel />
 
         {settingsPanel}
 

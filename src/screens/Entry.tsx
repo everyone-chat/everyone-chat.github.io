@@ -4,11 +4,14 @@ import ProfileEditor from '../components/ProfileEditor'
 import { COLORS, type Profile } from '../types'
 import { encodeLook, randomLook } from '../look'
 import Sky from '../components/Sky'
+import { loginWithId } from '../account'
 
 type Props = { onJoined: (p: Profile) => void }
 
 export default function Entry({ onJoined }: Props) {
-  const [step, setStep] = useState<'code' | 'profile'>('code')
+  const [step, setStep] = useState<'code' | 'profile' | 'login'>('code')
+  const [loginId, setLoginId] = useState('')
+  const [password, setPassword] = useState('')
   const [code, setCode] = useState('')
   const [nickname, setNickname] = useState('')
   const [emoji, setEmoji] = useState(() => encodeLook(randomLook()))
@@ -40,6 +43,36 @@ export default function Entry({ onJoined }: Props) {
     } catch (err) {
       console.error(err)
       setError('연결에 문제가 있어요. 잠시 후 다시 시도해 주세요.')
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  async function submitLogin(e: React.FormEvent) {
+    e.preventDefault()
+    setBusy(true)
+    setError('')
+    try {
+      const err = await loginWithId(loginId, password)
+      if (err) return setError(err)
+      const { data: u } = await supabase.auth.getUser()
+      const { data: profile } = await supabase.from('profiles').select('*').eq('id', u.user!.id).maybeSingle()
+      if (profile?.approved) return onJoined(profile as Profile)
+      if (profile?.banned) {
+        await supabase.auth.signOut()
+        return setError('내보내진 계정이에요. 방 주인에게 물어봐 주세요.')
+      }
+      // 채팅방을 나갔던 계정: 입장 코드만 다시 넣으면 그대로 복귀
+      if (profile) {
+        setNickname(profile.nickname)
+        setEmoji(profile.emoji)
+        setColor(profile.color)
+      }
+      setStep('code')
+      setError('로그인했어요. 입장 코드를 다시 넣으면 예전 그대로 들어가요.')
+    } catch (err) {
+      console.error(err)
+      setError('로그인에 실패했어요. 잠시 후 다시 시도해 주세요.')
     } finally {
       setBusy(false)
     }
@@ -94,7 +127,35 @@ export default function Entry({ onJoined }: Props) {
         </div>
 
         <div className="pop rounded-[32px] border-2 border-white bg-white/70 p-6 shadow-[0_12px_32px_rgba(120,110,170,0.15)] backdrop-blur">
-          {step === 'code' ? (
+          {step === 'login' ? (
+            <form onSubmit={submitLogin} className="flex flex-col gap-3">
+              <span className="font-cute text-lg">아이디로 로그인</span>
+              <input
+                value={loginId}
+                onChange={(e) => setLoginId(e.target.value)}
+                autoFocus
+                autoCapitalize="off"
+                autoComplete="username"
+                placeholder="아이디"
+                className="w-full rounded-2xl border-2 border-white bg-white/80 px-4 py-3 text-base outline-none focus:border-accent"
+              />
+              <input
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                type="password"
+                autoComplete="current-password"
+                placeholder="비밀번호"
+                className="w-full rounded-2xl border-2 border-white bg-white/80 px-4 py-3 text-base outline-none focus:border-accent"
+              />
+              {error && <p className="text-sm text-accent-deep">{error}</p>}
+              <button disabled={busy} className="squish rounded-2xl bg-accent py-3.5 font-cute text-lg text-white shadow-[0_4px_0_var(--color-accent-deep)] disabled:opacity-60">
+                {busy ? '로그인 중…' : '로그인'}
+              </button>
+              <button type="button" onClick={() => { setStep('code'); setError('') }} className="text-sm text-ink-soft underline">
+                처음이에요 (입장 코드로 들어가기)
+              </button>
+            </form>
+          ) : step === 'code' ? (
             <form onSubmit={submitCode} className="flex flex-col gap-4">
               <label>
                 <span className="mb-1.5 block font-cute text-lg">입장 코드</span>
@@ -114,6 +175,9 @@ export default function Entry({ onJoined }: Props) {
                 className="squish rounded-2xl bg-accent py-3.5 font-cute text-lg text-white shadow-[0_4px_0_var(--color-accent-deep)] disabled:opacity-60"
               >
                 {busy ? '확인 중…' : '들어가기'}
+              </button>
+              <button type="button" onClick={() => { setStep('login'); setError('') }} className="text-sm text-ink-soft underline">
+                이미 계정이 있어요 (아이디로 로그인)
               </button>
             </form>
           ) : (

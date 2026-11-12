@@ -102,7 +102,7 @@ export default function FriendsPanel({ me, friends, allMembers, onSetCode, onAdd
             setBusy(false)
             if (err) setAddMsg(err)
             else {
-              setAddMsg('친구가 됐어요! 광장과 채팅에서 볼 수 있어요.')
+              setAddMsg('친구가 됐어요! 마이룸과 채팅에서 볼 수 있어요.')
               setAddCode('')
             }
           }}
@@ -200,24 +200,6 @@ export default function FriendsPanel({ me, friends, allMembers, onSetCode, onAdd
               ))}
           </ul>
 
-          {banned.length > 0 && (
-            <>
-              <h3 className="mb-2 mt-5 text-sm text-ink-soft">내보낸 멤버 {banned.length}명</h3>
-              <ul className="flex flex-col gap-2">
-                {banned.map((m) => (
-                  <li key={m.id} className="flex items-center gap-3 rounded-2xl bg-white/50 px-3 py-2">
-                    <span className="opacity-50">
-                      <Avatar look={m.emoji} color={m.color} size={36} headOnly />
-                    </span>
-                    <span className="min-w-0 flex-1 truncate text-ink-soft">{m.nickname}</span>
-                    <button onClick={() => onUnban(m)} className="squish rounded-full bg-accent px-3 py-1 text-xs text-white">
-                      다시 들이기
-                    </button>
-                  </li>
-                ))}
-              </ul>
-            </>
-          )}
         </section>
       )}
     </>

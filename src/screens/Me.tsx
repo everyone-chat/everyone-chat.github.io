@@ -18,9 +18,10 @@ type Props = {
   banned: Profile[]
   onUnban: (p: Profile) => Promise<boolean>
   onSetInvite: (code: string) => Promise<string | null>
+  settingsPanel?: React.ReactNode
 }
 
-export default function Me({ me, onSaveProfile, onChangeStatus, onClaimAdmin, onLeave, friends, allMembers, onSetCode, onAddFriend, onRemoveFriend, onKick, banned, onUnban, onSetInvite }: Props) {
+export default function Me({ me, onSaveProfile, onChangeStatus, onClaimAdmin, onLeave, friends, allMembers, onSetCode, onAddFriend, onRemoveFriend, onKick, banned, onUnban, onSetInvite, settingsPanel }: Props) {
   const [adminOpen, setAdminOpen] = useState(false)
   const [adminCode, setAdminCode] = useState('')
   const [adminNotice, setAdminNotice] = useState('')
@@ -139,6 +140,8 @@ export default function Me({ me, onSaveProfile, onChangeStatus, onClaimAdmin, on
           )}
           {adminNotice && <p className="mt-2 text-center text-sm text-accent-deep">{adminNotice}</p>}
         </section>
+
+        {settingsPanel}
 
         <button
           onClick={async () => {

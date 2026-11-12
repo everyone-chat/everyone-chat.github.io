@@ -134,7 +134,7 @@ export default function Entry({ onJoined }: Props) {
                 disabled={busy}
                 className="squish rounded-2xl bg-accent py-3.5 font-cute text-lg text-white shadow-[0_4px_0_var(--color-accent-deep)] disabled:opacity-60"
               >
-                {busy ? '입장 중…' : '광장으로 가기'}
+                {busy ? '입장 중…' : '마이룸으로 가기'}
               </button>
             </form>
           )}

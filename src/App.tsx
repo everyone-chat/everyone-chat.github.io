@@ -6,6 +6,9 @@ import Plaza from './screens/Plaza'
 import Chat from './screens/Chat'
 import ChatList from './screens/ChatList'
 import Me from './screens/Me'
+import SecretScreen from './components/SecretScreen'
+import ViewSettings from './components/ViewSettings'
+import { FRAME_CLASS, useIdle, useSettings } from './settings'
 import BottomNav from './components/BottomNav'
 import Sky from './components/Sky'
 import { peerOf, roomOf, type Friendship, type Message, type Profile, type Tab } from './types'
@@ -32,6 +35,10 @@ export default function App() {
   const [unread, setUnread] = useState<Record<string, number>>({})
   const [draft, setDraft] = useState('')
   const [now, setNow] = useState(() => Date.now())
+  const [settings, updateSettings] = useSettings()
+  const [secret, setSecret] = useState(false)
+  const goSecret = useCallback(() => setSecret(true), [])
+  useIdle(settings.secretOn && !secret, settings.secretMinutes, goSecret)
   const friendsRevRef = useRef<number | null>(null)
   const viewRef = useRef({ tab, activePeer })
   viewRef.current = { tab, activePeer }
@@ -358,7 +365,7 @@ export default function App() {
         <Sky />
         <div className="relative text-center">
           <div className="bob text-5xl">🫧</div>
-          <p className="mt-3 font-cute text-lg text-ink-soft">광장으로 가는 중…</p>
+          <p className="mt-3 font-cute text-lg text-ink-soft">마이룸으로 가는 중…</p>
         </div>
       </div>
     )
@@ -409,7 +416,9 @@ export default function App() {
   }
 
   return (
-    <div className="mx-auto flex h-dvh max-w-md flex-col bg-white shadow-[0_0_40px_rgba(120,110,170,0.15)]">
+    <>
+    {secret && <SecretScreen onExit={() => setSecret(false)} />}
+    <div className={`mx-auto flex h-dvh max-w-md flex-col bg-white shadow-[0_0_40px_rgba(120,110,170,0.15)] ${FRAME_CLASS[settings.size]}`}>
       <main className="min-h-0 flex-1">
         {tab === 'plaza' && (
           <Plaza
@@ -457,10 +466,12 @@ export default function App() {
             banned={bannedMembers}
             onUnban={unban}
             onSetInvite={setInviteCode}
+            settingsPanel={<ViewSettings settings={settings} update={updateSettings} onSecretNow={goSecret} />}
           />
         )}
       </main>
       <BottomNav tab={tab} unread={totalUnread} onChange={changeTab} />
     </div>
+    </>
   )
 }

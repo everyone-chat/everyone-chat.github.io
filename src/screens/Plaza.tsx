@@ -66,7 +66,7 @@ export default function Plaza({ me, profiles, now, onChangeStatus, onGreet, onKi
     <div className="flex h-full flex-col bg-gradient-to-b from-[#FFF0F5] to-[#EAF5FF]">
       <header className="flex items-center justify-between gap-2 px-5 pb-2 pt-5">
         <div className="min-w-0">
-          <h1 className="font-cute text-2xl leading-tight">우리 광장</h1>
+          <h1 className="font-cute text-2xl leading-tight">마이룸</h1>
           <p className="truncate text-sm text-ink-soft">
             {me.nickname}의 방 · 친구 {friends.length}명 · <span className="text-[#3DBE7A]">●</span> {onlineCount}명
           </p>

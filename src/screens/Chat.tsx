@@ -1,6 +1,6 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import Avatar from '../components/Avatar'
-import ChatImage from '../components/ChatImage'
+import ChatImage, { GalleryThumb } from '../components/ChatImage'
 import { isOnline, type Message, type Profile } from '../types'
 
 type Props = {
@@ -37,6 +37,8 @@ export default function Chat({ me, profileMap, messages, peer, now, onBack, load
   const [file, setFile] = useState<File | null>(null)
   const [preview, setPreview] = useState<string | null>(null)
   const [viewer, setViewer] = useState<string | null>(null)
+  const [gallery, setGallery] = useState(false)
+  const [revealAll, setRevealAll] = useState(false)
   const [confirmClear, setConfirmClear] = useState(false)
   const fileRef = useRef<HTMLInputElement>(null)
   // 꾹 누르기(0.5초) → 삭제 메뉴. 꾹 누른 직후의 클릭(사진 크게 보기 등)은 무시
@@ -85,6 +87,7 @@ export default function Chat({ me, profileMap, messages, peer, now, onBack, load
     setPreview(u)
     return () => URL.revokeObjectURL(u)
   }, [file])
+  const photos = messages.filter((m) => m.image_path)
   const listRef = useRef<HTMLDivElement>(null)
   const sendRef = useRef<HTMLButtonElement>(null)
   // 휴대폰: 보내기 버튼 터치가 입력창 포커스를 빼앗지 않도록 (passive가 아닌 리스너여야 막을 수 있음)
@@ -154,6 +157,18 @@ export default function Chat({ me, profileMap, messages, peer, now, onBack, load
             <p className="text-xs text-ink-soft">{isOnline(peer, now) ? <><span className="text-[#3DBE7A]">● </span>접속 중</> : '오프라인'}</p>
           </div>
         </div>
+        <div className="flex shrink-0 items-center gap-1.5">
+        <button
+          onClick={() => {
+            setRevealAll(false)
+            setGallery(true)
+          }}
+          className="squish grid h-9 w-9 place-items-center rounded-full bg-white text-base"
+          aria-label="사진 모아보기"
+          title="사진 모아보기"
+        >
+          🖼️
+        </button>
         {me.is_admin ? (
           <button
             onClick={async () => {
@@ -171,6 +186,7 @@ export default function Chat({ me, profileMap, messages, peer, now, onBack, load
             {confirmClear ? '정말 전부 지울까요? 한 번 더' : '🗑 대화 비우기'}
           </button>
         ) : null}
+        </div>
       </header>
 
       <div
@@ -322,6 +338,31 @@ export default function Chat({ me, profileMap, messages, peer, now, onBack, load
           </button>
         </div>
       </form>
+
+      {gallery && (
+        <div className="fade-in fixed inset-0 z-40 flex flex-col bg-[#FFF7FA]">
+          <header className="flex items-center justify-between border-b border-white bg-white/80 px-4 py-3">
+            <button onClick={() => setGallery(false)} className="squish grid h-10 w-10 place-items-center rounded-full text-2xl" aria-label="닫기">
+              ‹
+            </button>
+            <h2 className="font-cute text-lg">사진 모아보기 · {photos.length}장</h2>
+            <button onClick={() => setRevealAll((v) => !v)} className="squish rounded-full bg-white px-3 py-1.5 text-xs shadow-sm">
+              {revealAll ? '🙈 가리기' : '👀 모두 보기'}
+            </button>
+          </header>
+          <div className="no-scrollbar flex-1 overflow-y-auto p-3">
+            {photos.length === 0 ? (
+              <p className="py-16 text-center text-sm text-ink-soft">이 대화에서 주고받은 사진이 없어요.</p>
+            ) : (
+              <div className="grid grid-cols-3 gap-1.5">
+                {[...photos].reverse().map((m) => (
+                  <GalleryThumb key={m.id} path={m.image_path!} reveal={revealAll} onOpen={setViewer} />
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
 
       {viewer && (
         <button

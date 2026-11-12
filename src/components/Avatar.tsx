@@ -12,8 +12,6 @@ export const CANVAS = { w: 420, h: 640, feet: 624, top: 150 }
 const BASE = import.meta.env.BASE_URL + 'parts/'
 const HEAD_BOX = '90 112 245 245'
 
-// 상태 → 행동 포즈 번호
-export const POSE_OF: Record<string, number> = { sleep: 0, work: 1, eat: 2, rest: 3, busy: 4, wash: 5 }
 
 type Props = {
   look: string
@@ -52,11 +50,10 @@ export function CharacterSvg({ look: l, size = 72, status, headOnly }: { look: L
   const skinC = SKINS[l.skin]
   const hf = `url(#h${uid})`
   const sf = `url(#s${uid})`
-  const pose = !headOnly && status != null ? POSE_OF[status] : undefined
+  // 행동 포즈 그림은 옷을 입힐 수 없어서 쓰지 않음 → 항상 내가 고른 옷을 입은 서 있는 모습 (상태는 이름표 위 글자로)
+  void status
   const height = headOnly ? size : (size * CANVAS.h) / CANVAS.w
   const h = `hair_${l.g}${l.hair}`
-  const ph = pose != null ? M[`posehead_${l.g}${pose}`] : undefined
-  const headShift = ph ? `translate(${ph[0]} ${ph[1]})` : undefined
 
   return (
     <svg
@@ -71,13 +68,7 @@ export function CharacterSvg({ look: l, size = 72, status, headOnly }: { look: L
         <Tint id={`s${uid}`} color={skinC} />
       </defs>
       {!headOnly && <ellipse cx="212" cy="626" rx="88" ry="10" fill="#5A4E7A" opacity=".12" />}
-      {!headOnly && pose != null && (
-        <>
-          <Part name={`pose_${l.g}${pose}_skin`} filter={sf} />
-          <Part name={`pose_${l.g}${pose}_lines`} />
-        </>
-      )}
-      {!headOnly && pose == null && (
+      {!headOnly && (
         <>
           <Part name={`body_${l.g}_skin`} filter={sf} />
           <Part name={`body_${l.g}_lines`} />
@@ -92,8 +83,7 @@ export function CharacterSvg({ look: l, size = 72, status, headOnly }: { look: L
           <Part name={`shoes_${l.shoes}`} />
         </>
       )}
-      {/* 머리는 서 있을 때 목 위, 행동 포즈일 땐 포즈의 목 위치로 옮김 */}
-      <g transform={headShift}>
+      <g>
         <Part name={`${h}_skin`} filter={sf} />
         <Part name={`${h}_hair`} filter={hf} />
         <Part name={`${h}_lines`} />

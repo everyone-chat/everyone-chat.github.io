@@ -26,7 +26,22 @@ export async function compressImage(file: File): Promise<Blob> {
   return blob
 }
 
+export const MAX_VIDEO_MB = 50
+const VIDEO_EXT: Record<string, string> = { 'video/mp4': 'mp4', 'video/quicktime': 'mov', 'video/webm': 'webm' }
+export const isVideoPath = (path: string) => /\.(mp4|mov|webm)$/i.test(path)
+export const isVideoFile = (f: File) => f.type.startsWith('video/')
+
 export async function uploadImage(userId: string, file: File): Promise<string> {
+  // 동영상은 그대로 올림 (무료 플랜 파일 1개 최대 50MB)
+  if (isVideoFile(file)) {
+    const ext = VIDEO_EXT[file.type]
+    if (!ext) throw new Error('video_type')
+    if (file.size > MAX_VIDEO_MB * 1024 * 1024) throw new Error('too_big')
+    const path = `${userId}/${crypto.randomUUID()}.${ext}`
+    const { error } = await supabase.storage.from(BUCKET).upload(path, file, { contentType: file.type, upsert: false })
+    if (error) throw error
+    return path
+  }
   const blob = await compressImage(file)
   const ext = blob.type === 'image/gif' ? 'gif' : 'jpg'
   const path = `${userId}/${crypto.randomUUID()}.${ext}`

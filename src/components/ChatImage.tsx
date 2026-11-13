@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { imageUrl } from '../images'
+import { imageUrl, isVideoPath } from '../images'
 
 export function useImageUrl(path: string) {
   const [url, setUrl] = useState<string | null>(null)
@@ -35,9 +35,13 @@ export default function ChatImage({ path, onOpen }: { path: string; onOpen: (url
       className="relative block overflow-hidden rounded-2xl border-2 border-white shadow-sm"
       aria-label="사진 보기"
     >
-      <img src={url} alt="" loading="lazy" draggable={false} className="block h-40 w-48 scale-110 object-cover blur-xl" />
+      {isVideoPath(path) ? (
+        <video src={`${url}#t=0.5`} preload="metadata" muted playsInline className="pointer-events-none block h-40 w-48 scale-110 bg-[#4A4560] object-cover blur-xl" />
+      ) : (
+        <img src={url} alt="" loading="lazy" draggable={false} className="block h-40 w-48 scale-110 object-cover blur-xl" />
+      )}
       <span className="absolute inset-0 grid place-items-center bg-white/25">
-        <span className="rounded-full bg-white/90 px-3 py-1.5 text-xs text-ink shadow-sm">🙈 눌러서 보기</span>
+        <span className="rounded-full bg-white/90 px-3 py-1.5 text-xs text-ink shadow-sm">{isVideoPath(path) ? '▶ 동영상 · 눌러서 보기' : '🙈 눌러서 보기'}</span>
       </span>
     </button>
   )
@@ -57,7 +61,14 @@ export function GalleryThumb({ path, onOpen, reveal }: { path: string; onOpen: (
       {failed ? (
         <span className="text-[10px] text-ink-soft">불러올 수 없음</span>
       ) : url ? (
-        <img src={url} alt="" loading="lazy" draggable={false} className={`h-full w-full object-cover ${reveal ? '' : 'scale-110 blur-lg'}`} />
+        <>
+          {isVideoPath(path) ? (
+            <video src={`${url}#t=0.5`} preload="metadata" muted playsInline className={`pointer-events-none h-full w-full bg-[#4A4560] object-cover ${reveal ? '' : 'scale-110 blur-lg'}`} />
+          ) : (
+            <img src={url} alt="" loading="lazy" draggable={false} className={`h-full w-full object-cover ${reveal ? '' : 'scale-110 blur-lg'}`} />
+          )}
+          {isVideoPath(path) && <span className="absolute bottom-1 right-1 rounded-full bg-black/50 px-1.5 text-[10px] text-white">▶</span>}
+        </>
       ) : (
         <span className="block h-full w-full animate-pulse" />
       )}

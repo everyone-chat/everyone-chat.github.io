@@ -67,7 +67,7 @@ export default function ChatList({ friends, lastByPeer, unread, now, onOpen, onA
                 </div>
                 <div className="flex items-center justify-between gap-2">
                   <span className="truncate text-sm text-ink-soft">
-                    {last ? (last.content || '📷 사진') : '아직 대화가 없어요'}
+                    {last ? (last.content || (/\.(mp4|mov|webm)$/i.test(last.image_path ?? '') ? '🎬 동영상' : '📷 사진')) : '아직 대화가 없어요'}
                   </span>
                   {n > 0 && (
                     <span className="shrink-0 rounded-full bg-accent-deep px-1.5 text-[11px] leading-5 text-white">{n > 99 ? '99+' : n}</span>

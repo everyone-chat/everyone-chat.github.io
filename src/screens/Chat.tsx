@@ -2,6 +2,7 @@ import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import Avatar from '../components/Avatar'
 import ChatImage, { GalleryThumb } from '../components/ChatImage'
 import { LinkSheet, LinkText } from '../components/LinkText'
+import { MAX_VIDEO_MB, isVideoFile, isVideoPath } from '../images'
 import { isOnline, type Message, type Profile } from '../types'
 
 type Props = {
@@ -164,7 +165,7 @@ export default function Chat({ me, profileMap, messages, peer, now, onBack, load
       onDraftChange('')
       setFile(null)
       if (document.activeElement !== inputRef.current) inputRef.current?.focus({ preventScroll: true })
-    } else setError(file ? '사진 전송에 실패했어요. 다시 시도해 주세요.' : '전송에 실패했어요. 다시 시도해 주세요.')
+    } else setError(file ? `${isVideoFile(file) ? '동영상' : '사진'} 전송에 실패했어요. 다시 시도해 주세요.` : '전송에 실패했어요. 다시 시도해 주세요.')
   }
 
   return (
@@ -310,23 +311,30 @@ export default function Chat({ me, profileMap, messages, peer, now, onBack, load
         {error && <p className="mb-1.5 px-2 text-xs text-accent-deep">{error}</p>}
         {preview && (
           <div className="mb-2 flex items-center gap-2 px-1">
-            <img src={preview} alt="보낼 사진" className="h-16 w-16 rounded-xl border-2 border-white object-cover" />
+            {file && isVideoFile(file) ? (
+              <video src={preview} muted playsInline className="h-16 w-16 rounded-xl border-2 border-white bg-[#4A4560] object-cover" />
+            ) : (
+              <img src={preview} alt="보낼 사진" className="h-16 w-16 rounded-xl border-2 border-white object-cover" />
+            )}
             <button type="button" onClick={() => setFile(null)} className="rounded-full bg-white px-3 py-1 text-xs text-ink-soft">
               취소
             </button>
-            {sending && <span className="text-xs text-ink-soft">사진 보내는 중…</span>}
+            {sending && <span className="text-xs text-ink-soft">{file && isVideoFile(file) ? '동영상 올리는 중… (크면 조금 걸려요)' : '사진 보내는 중…'}</span>}
           </div>
         )}
         <div className="flex items-center gap-2">
           <input
             ref={fileRef}
             type="file"
-            accept="image/*"
+            accept="image/*,video/mp4,video/quicktime,video/webm"
             className="hidden"
             onChange={(e) => {
               const f = e.target.files?.[0] ?? null
               e.target.value = ''
-              if (f && !f.type.startsWith('image/')) return setError('사진 파일만 보낼 수 있어요.')
+              if (f && !f.type.startsWith('image/') && !isVideoFile(f)) return setError('사진이나 동영상만 보낼 수 있어요.')
+              if (f && isVideoFile(f) && !/^video\/(mp4|quicktime|webm)$/.test(f.type)) return setError('mp4·mov·webm 동영상만 보낼 수 있어요.')
+              if (f && isVideoFile(f) && f.size > MAX_VIDEO_MB * 1024 * 1024)
+                return setError(`동영상은 ${MAX_VIDEO_MB}MB까지 보낼 수 있어요. (지금 ${Math.round(f.size / 1024 / 1024)}MB)`)
               setError('')
               setFile(f)
             }}
@@ -335,7 +343,7 @@ export default function Chat({ me, profileMap, messages, peer, now, onBack, load
             type="button"
             onClick={() => fileRef.current?.click()}
             className="squish grid h-11 w-11 shrink-0 place-items-center rounded-full bg-white text-xl"
-            aria-label="사진 보내기"
+            aria-label="사진·동영상 보내기"
           >
             📷
           </button>
@@ -368,14 +376,14 @@ export default function Chat({ me, profileMap, messages, peer, now, onBack, load
             <button onClick={() => setGallery(false)} className="squish grid h-10 w-10 place-items-center rounded-full text-2xl" aria-label="닫기">
               ‹
             </button>
-            <h2 className="font-cute text-lg">사진 모아보기 · {photos.length}장</h2>
+            <h2 className="font-cute text-lg">사진·동영상 · {photos.length}개</h2>
             <button onClick={() => setRevealAll((v) => !v)} className="squish rounded-full bg-white px-3 py-1.5 text-xs shadow-sm">
               {revealAll ? '🙈 가리기' : '👀 모두 보기'}
             </button>
           </header>
           <div className="no-scrollbar flex-1 overflow-y-auto p-3">
             {photos.length === 0 ? (
-              <p className="py-16 text-center text-sm text-ink-soft">이 대화에서 주고받은 사진이 없어요.</p>
+              <p className="py-16 text-center text-sm text-ink-soft">이 대화에서 주고받은 사진·동영상이 없어요.</p>
             ) : (
               <div className="grid grid-cols-3 gap-1.5">
                 {[...photos].reverse().map((m) => (
@@ -403,16 +411,20 @@ export default function Chat({ me, profileMap, messages, peer, now, onBack, load
                 }}
                 className={`squish rounded-full px-4 py-2 text-sm ${confirmDel ? 'bg-[#E25A6A] text-white' : 'bg-white text-[#E25A6A]'}`}
               >
-                {confirmDel ? '정말 삭제할까요? 한 번 더' : `🗑 사진 삭제${viewer.msg.user_id !== me.id ? ' (마스터)' : ''}`}
+                {confirmDel ? '정말 삭제할까요? 한 번 더' : `🗑 ${isVideoPath(viewer.msg.image_path ?? '') ? '동영상' : '사진'} 삭제${viewer.msg.user_id !== me.id ? ' (마스터)' : ''}`}
               </button>
             )}
             <button onClick={() => setViewer(null)} className="squish rounded-full bg-white px-4 py-2 text-sm text-ink" aria-label="사진 닫기">
               ✕ 닫기
             </button>
           </div>
-          <button onClick={() => setViewer(null)} className="grid min-h-0 flex-1 place-items-center p-4 pt-0" aria-label="사진 닫기">
-            <img src={viewer.url} alt="사진 크게 보기" className="max-h-full max-w-full rounded-2xl" />
-          </button>
+          <div onClick={() => setViewer(null)} className="grid min-h-0 flex-1 place-items-center p-4 pt-0">
+            {isVideoPath(viewer.msg.image_path ?? '') ? (
+              <video src={viewer.url} controls autoPlay playsInline onClick={(e) => e.stopPropagation()} className="max-h-full max-w-full rounded-2xl bg-black" />
+            ) : (
+              <img src={viewer.url} alt="사진 크게 보기" className="max-h-full max-w-full rounded-2xl" />
+            )}
+          </div>
         </div>
       )}
     </div>

@@ -1,6 +1,7 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import Avatar from '../components/Avatar'
 import ChatImage, { GalleryThumb } from '../components/ChatImage'
+import { LinkSheet, LinkText } from '../components/LinkText'
 import { isOnline, type Message, type Profile } from '../types'
 
 type Props = {
@@ -40,6 +41,7 @@ export default function Chat({ me, profileMap, messages, peer, now, onBack, load
   const [confirmDel, setConfirmDel] = useState(false)
   const canDelete = (m: Message) => m.user_id === me.id || me.is_admin
   const [gallery, setGallery] = useState(false)
+  const [link, setLink] = useState<string | null>(null)
   const [revealAll, setRevealAll] = useState(false)
   const [confirmClear, setConfirmClear] = useState(false)
   const fileRef = useRef<HTMLInputElement>(null)
@@ -270,7 +272,7 @@ export default function Chat({ me, profileMap, messages, peer, now, onBack, load
                       }`}
                       style={mine ? { background: me.color } : undefined}
                     >
-                      {m.content}
+                      <LinkText text={m.content} onLink={setLink} />
                     </p>
                     )}
                     </div>
@@ -384,6 +386,8 @@ export default function Chat({ me, profileMap, messages, peer, now, onBack, load
           </div>
         </div>
       )}
+
+      {link && <LinkSheet url={link} onClose={() => setLink(null)} />}
 
       {viewer && (
         <div className="fade-in fixed inset-0 z-50 flex flex-col bg-[#2A2433]/90">

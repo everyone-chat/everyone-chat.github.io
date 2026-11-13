@@ -36,7 +36,9 @@ export default function Chat({ me, profileMap, messages, peer, now, onBack, load
   const [menuId, setMenuId] = useState<number | null>(null)
   const [file, setFile] = useState<File | null>(null)
   const [preview, setPreview] = useState<string | null>(null)
-  const [viewer, setViewer] = useState<string | null>(null)
+  const [viewer, setViewer] = useState<{ url: string; msg: Message } | null>(null)
+  const [confirmDel, setConfirmDel] = useState(false)
+  const canDelete = (m: Message) => m.user_id === me.id || me.is_admin
   const [gallery, setGallery] = useState(false)
   const [revealAll, setRevealAll] = useState(false)
   const [confirmClear, setConfirmClear] = useState(false)
@@ -70,7 +72,11 @@ export default function Chat({ me, profileMap, messages, peer, now, onBack, load
           onPointerUp: cancelPress,
           onPointerCancel: cancelPress,
           onPointerLeave: cancelPress,
-          onContextMenu: (e: React.MouseEvent) => e.preventDefault(),
+          // PC: 오른쪽 클릭으로도 삭제 메뉴
+          onContextMenu: (e: React.MouseEvent) => {
+            e.preventDefault()
+            if ((e.nativeEvent as PointerEvent).pointerType !== 'touch' && !longPressed.current) setMenuId(id)
+          },
           onClickCapture: (e: React.MouseEvent) => {
             if (longPressed.current) {
               e.stopPropagation()
@@ -254,7 +260,7 @@ export default function Chat({ me, profileMap, messages, peer, now, onBack, load
                       }}
                       className={`no-callout flex flex-col gap-1 ${mine ? 'items-end' : 'items-start'}`}
                     >
-                    {m.image_path && <ChatImage path={m.image_path} onOpen={setViewer} />}
+                    {m.image_path && <ChatImage path={m.image_path} onOpen={(url) => { setConfirmDel(false); setViewer({ url, msg: m }) }} />}
                     {m.content && (
                     <p
                       className={`whitespace-pre-wrap break-words px-3.5 py-2 text-[15px] leading-snug shadow-sm ${
@@ -371,7 +377,7 @@ export default function Chat({ me, profileMap, messages, peer, now, onBack, load
             ) : (
               <div className="grid grid-cols-3 gap-1.5">
                 {[...photos].reverse().map((m) => (
-                  <GalleryThumb key={m.id} path={m.image_path!} reveal={revealAll} onOpen={setViewer} />
+                  <GalleryThumb key={m.id} path={m.image_path!} reveal={revealAll} onOpen={(url) => { setConfirmDel(false); setViewer({ url, msg: m }) }} />
                 ))}
               </div>
             )}
@@ -380,13 +386,30 @@ export default function Chat({ me, profileMap, messages, peer, now, onBack, load
       )}
 
       {viewer && (
-        <button
-          onClick={() => setViewer(null)}
-          className="fade-in fixed inset-0 z-50 grid place-items-center bg-[#2A2433]/85 p-4"
-          aria-label="사진 닫기"
-        >
-          <img src={viewer} alt="사진 크게 보기" className="max-h-full max-w-full rounded-2xl" />
-        </button>
+        <div className="fade-in fixed inset-0 z-50 flex flex-col bg-[#2A2433]/90">
+          <div className="flex items-center justify-end gap-2 p-3">
+            {canDelete(viewer.msg) && (
+              <button
+                onClick={async () => {
+                  if (!confirmDel) return setConfirmDel(true)
+                  const ok = await onDelete(viewer.msg.id)
+                  setConfirmDel(false)
+                  if (ok) setViewer(null)
+                  else setError('삭제에 실패했어요.')
+                }}
+                className={`squish rounded-full px-4 py-2 text-sm ${confirmDel ? 'bg-[#E25A6A] text-white' : 'bg-white text-[#E25A6A]'}`}
+              >
+                {confirmDel ? '정말 삭제할까요? 한 번 더' : `🗑 사진 삭제${viewer.msg.user_id !== me.id ? ' (마스터)' : ''}`}
+              </button>
+            )}
+            <button onClick={() => setViewer(null)} className="squish rounded-full bg-white px-4 py-2 text-sm text-ink" aria-label="사진 닫기">
+              ✕ 닫기
+            </button>
+          </div>
+          <button onClick={() => setViewer(null)} className="grid min-h-0 flex-1 place-items-center p-4 pt-0" aria-label="사진 닫기">
+            <img src={viewer.url} alt="사진 크게 보기" className="max-h-full max-w-full rounded-2xl" />
+          </button>
+        </div>
       )}
     </div>
   )

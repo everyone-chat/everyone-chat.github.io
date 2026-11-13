@@ -46,7 +46,7 @@ async function userId(token) {
 async function rpc(name, token, args) {
   const r = await sb('/rest/v1/rpc/' + name, token, { method: 'POST', body: JSON.stringify(args || {}) })
   if (!r.ok) return null
-  return r.json()
+  return r.text().then((t) => { try { return JSON.parse(t) } catch { return null } })
 }
 
 /** 이 사람이 이 파일을 볼 수 있나: 메시지가 보이면(=그 대화 당사자) 가능, 또는 내가 올린 파일 */

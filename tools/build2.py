@@ -154,6 +154,22 @@ for g,G_ in (('f','F'),('m','M')):
         print(kind, g, 'ok')
 
 # ---------------- 행동 포즈 (머리 없음 → 내 머리를 목 위에) ----------------
+import poselab
+# 포즈별 흰 옷 조각 번호 (poselab.py로 번호 확인): top=민소매, bottom=반바지, shoes=신발
+POSE_PARTS = {
+ 'f': [dict(top=[262,233], bottom=[247], shoes=[224,263,241]),
+       dict(top=[45], bottom=[202], shoes=[228,229,234,235]),
+       dict(top=[40,157], bottom=[228], shoes=[283,287,292,293]),
+       dict(top=[53], bottom=[168], shoes=[261,281,291,297]),
+       dict(top=[227], bottom=[267], shoes=[483,484,522,523]),
+       dict(shoes=[343,344,397,398])],
+ 'm': [dict(top=[242,198], bottom=[212], shoes=[158,243,224]),
+       dict(top=[43], bottom=[198], shoes=[226,227,230,233]),
+       dict(top=[38,132], bottom=[210], shoes=[272,273,275,276]),
+       dict(top=[60], bottom=[169], shoes=[257,271,272]),
+       dict(top=[212,232,105], bottom=[254], shoes=[481,482,515,516]),
+       dict(shoes=[360,361,415,416])],
+}
 PB = [(10,255,445,622),(450,238,725,582),(758,255,1032,582),(1058,262,1482,604),(1482,128,1772,582),(1803,132,2160,584)]
 for g,sheet in (('f','poseF'),('m','poseM')):
     # 서 있는 포즈(바쁜 중·씻는 중)의 목~발 길이를 몸과 같게 → 그 배율을 모든 포즈에
@@ -169,13 +185,54 @@ for g,sheet in (('f','poseF'),('m','poseM')):
         xs_ = np.nonzero(a[...,3]>40)[1]
         cx = (xs_.min()+xs_.max())/2 if i in (0,3) else an['nx']
         skin = a.copy(); skin[...,:3]=255; skin[...,3]=np.where(G,255,0)
-        lines = a.copy(); lines[...,3]=np.where(G,0,a[...,3])
-        for nm,L in (('skin',skin),('lines',lines)):
+        # 흰 민소매·반바지·신발을 따로 떼서 (흰색=기본) 내가 입은 옷 색으로 칠할 수 있게
+        _,_,lab,cs = poselab.wcomps(sheet, i)
+        parts = {}
+        for part, ids in POSE_PARTS[g][i].items():
+            mk = np.isin(lab, ids)
+            near = nd.binary_dilation(mk, iterations=4)
+            for j,m,sz,_ in cs:
+                if sz <= 150 and j not in ids and (m & near).any() and not (m & np.isin(lab, [x for p2,v in POSE_PARTS[g][i].items() if p2!=part for x in v])).any():
+                    mk |= m
+            parts[part] = mk
+        used = np.zeros_like(G)
+        layers = [('skin', skin)]
+        for part, mk in parts.items():
+            L = a.copy(); L[...,3] = np.where(mk, a[...,3], 0); layers.append((part, L)); used |= mk
+        lines = a.copy(); lines[...,3]=np.where(G | used, 0, a[...,3])
+        layers.append(('lines', lines))
+        for nm,L in layers:
             v,x,y = place(img(L), k, EX, FEET, cx, an['bottom'])
             save(f'pose_{g}{i}_{nm}', v, x, y)
         hx = EX + (an['nx']-cx)*k; hy = FEET + (an['neck']-an['bottom'])*k
         M[f'posehead_{g}{i}'] = [round(hx-EX,1), round(hy-NECK_Y,1), 0, 0]
         print('pose', g, i, 'k', round(k,3), 'head shift', M[f'posehead_{g}{i}'][:2])
+
+# ---------------- 옷·신발 대표 색 (포즈 옷 칠하기용) ----------------
+def dom(name, part=None):
+    a = np.asarray(Image.open(f'{OUT}/{name}.png')).astype(int)
+    if part == 'upper': a = a[: a.shape[0]*2//5]
+    if part == 'lower': a = a[a.shape[0]*3//5:]
+    px = a[a[...,3] > 220][:, :3]
+    r,g_,b = px[:,0], px[:,1], px[:,2]
+    lum = px.mean(1)
+    outline = (lum < 60) & (r >= g_) & (g_ >= b) & (r - b > 12)
+    px = px[~outline & (lum > 22)]
+    q = (px // 24) * 24 + 12
+    keys, cnt = np.unique(q, axis=0, return_counts=True)
+    best = keys[cnt.argmax()]
+    sel = px[(np.abs(q - best).sum(1) == 0)]
+    c = sel.mean(0)
+    return '#%02X%02X%02X' % tuple(int(v) for v in c)
+COLORS = {}
+for g in ('f','m'):
+    for i in range(5):
+        COLORS[f'top_{g}{i}'] = dom(f'top_{g}{i}')
+        COLORS[f'bottom_{g}{i}'] = dom(f'bottom_{g}{i}')
+        COLORS[f'one_{g}{i}'] = [dom(f'one_{g}{i}','upper'), dom(f'one_{g}{i}','lower')]
+for i in range(5): COLORS[f'shoes_{i}'] = dom(f'shoes_{i}')
+json.dump(COLORS, open(f'{OUT}/colors.json','w'), indent=1, ensure_ascii=False)
+print(COLORS)
 
 json.dump(M, open(f'{OUT}/manifest.json','w'), indent=0)
 print('layers', len(M))

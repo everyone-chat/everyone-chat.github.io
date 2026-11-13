@@ -1,5 +1,6 @@
 import { useId } from 'react'
 import MANIFEST from '../character/manifest.json'
+import CLOTH from '../character/colors.json'
 import { HAIR_COLORS, SKINS, parseLook, type Look } from '../look'
 
 // =========================================================
@@ -11,6 +12,9 @@ const M = MANIFEST as unknown as Record<string, [number, number, number, number]
 export const CANVAS = { w: 420, h: 640, feet: 624, top: 150 }
 const BASE = import.meta.env.BASE_URL + 'parts/'
 const HEAD_BOX = '90 112 245 245'
+
+// 상태 → 행동 포즈 번호
+export const POSE_OF: Record<string, number> = { sleep: 0, work: 1, eat: 2, rest: 3, busy: 4, wash: 5 }
 
 
 type Props = {
@@ -50,8 +54,13 @@ export function CharacterSvg({ look: l, size = 72, status, headOnly }: { look: L
   const skinC = SKINS[l.skin]
   const hf = `url(#h${uid})`
   const sf = `url(#s${uid})`
-  // 행동 포즈 그림은 옷을 입힐 수 없어서 쓰지 않음 → 항상 내가 고른 옷을 입은 서 있는 모습 (상태는 이름표 위 글자로)
-  void status
+  // 상태별 행동 포즈: 포즈 그림의 흰 민소매·반바지·신발을 내가 고른 옷·신발의 대표 색으로 칠함
+  const pose = !headOnly && status != null ? POSE_OF[status] : undefined
+  const C = CLOTH as unknown as Record<string, string | string[]>
+  const [topC, botC] = l.one >= 0 ? (C[`one_${l.g}${l.one}`] as string[]) : [C[`top_${l.g}${l.top}`] as string, C[`bottom_${l.g}${l.bottom}`] as string]
+  const shoeC = C[`shoes_${l.shoes}`] as string
+  const ph = pose != null ? M[`posehead_${l.g}${pose}`] : undefined
+  const headShift = ph ? `translate(${ph[0]} ${ph[1]})` : undefined
   const height = headOnly ? size : (size * CANVAS.h) / CANVAS.w
   const h = `hair_${l.g}${l.hair}`
 
@@ -66,9 +75,25 @@ export function CharacterSvg({ look: l, size = 72, status, headOnly }: { look: L
       <defs>
         <Tint id={`h${uid}`} color={hairC} />
         <Tint id={`s${uid}`} color={skinC} />
+        {pose != null && (
+          <>
+            <Tint id={`t${uid}`} color={topC} />
+            <Tint id={`b${uid}`} color={botC} />
+            <Tint id={`f${uid}`} color={shoeC} />
+          </>
+        )}
       </defs>
       {!headOnly && <ellipse cx="212" cy="626" rx="88" ry="10" fill="#5A4E7A" opacity=".12" />}
-      {!headOnly && (
+      {pose != null && (
+        <>
+          <Part name={`pose_${l.g}${pose}_skin`} filter={sf} />
+          <Part name={`pose_${l.g}${pose}_top`} filter={`url(#t${uid})`} />
+          <Part name={`pose_${l.g}${pose}_bottom`} filter={`url(#b${uid})`} />
+          <Part name={`pose_${l.g}${pose}_shoes`} filter={`url(#f${uid})`} />
+          <Part name={`pose_${l.g}${pose}_lines`} />
+        </>
+      )}
+      {!headOnly && pose == null && (
         <>
           <Part name={`body_${l.g}_skin`} filter={sf} />
           <Part name={`body_${l.g}_lines`} />
@@ -83,7 +108,8 @@ export function CharacterSvg({ look: l, size = 72, status, headOnly }: { look: L
           <Part name={`shoes_${l.shoes}`} />
         </>
       )}
-      <g>
+      {/* 머리는 서 있을 땐 목 위, 행동 포즈일 땐 포즈의 목 위치로 옮김 */}
+      <g transform={headShift}>
         <Part name={`${h}_skin`} filter={sf} />
         <Part name={`${h}_hair`} filter={hf} />
         <Part name={`${h}_lines`} />

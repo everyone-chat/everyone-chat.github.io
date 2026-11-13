@@ -1,0 +1,67 @@
+{
+ "top_f0": "#FCB8BB",
+ "bottom_f0": "#383838",
+ "one_f0": [
+  "#FCFCFC",
+  "#363535"
+ ],
+ "top_f1": "#FEF186",
+ "bottom_f1": "#91571E",
+ "one_f1": [
+  "#FCF7E3",
+  "#FDF8E3"
+ ],
+ "top_f2": "#D5ADED",
+ "bottom_f2": "#37629A",
+ "one_f2": [
+  "#FCC5DE",
+  "#FDC5DE"
+ ],
+ "top_f3": "#ADCDF3",
+ "bottom_f3": "#366099",
+ "one_f3": [
+  "#98C2E5",
+  "#96C0E4"
+ ],
+ "top_f4": "#B6F9B0",
+ "bottom_f4": "#252525",
+ "one_f4": [
+  "#FCF7E3",
+  "#FDF8E3"
+ ],
+ "top_m0": "#FCB8BC",
+ "bottom_m0": "#2C2C2C",
+ "one_m0": [
+  "#FCFBFB",
+  "#343333"
+ ],
+ "top_m1": "#FDF382",
+ "bottom_m1": "#93571F",
+ "one_m1": [
+  "#FCF7E6",
+  "#FDF8E7"
+ ],
+ "top_m2": "#DFB5F8",
+ "bottom_m2": "#3866A1",
+ "one_m2": [
+  "#FCC4DD",
+  "#FDC6E0"
+ ],
+ "top_m3": "#ADCEF3",
+ "bottom_m3": "#3866A1",
+ "one_m3": [
+  "#99C2E5",
+  "#91BCE1"
+ ],
+ "top_m4": "#BAFAB6",
+ "bottom_m4": "#282727",
+ "one_m4": [
+  "#FCF7E6",
+  "#FDF8E6"
+ ],
+ "shoes_0": "#2D2D2C",
+ "shoes_1": "#FCFBFB",
+ "shoes_2": "#884A1F",
+ "shoes_3": "#FBFBFB",
+ "shoes_4": "#FCFBF9"
+}

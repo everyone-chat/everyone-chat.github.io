@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { supabase } from './supabase'
-import { sweepDeletedImages, uploadImage } from './images'
+import { deleteMedia, sweepDeletedImages, uploadImage } from './images'
 import Entry from './screens/Entry'
 import Plaza from './screens/Plaza'
 import Chat from './screens/Chat'
@@ -400,7 +400,7 @@ export default function App() {
     if (error || !data) {
       console.error(error)
       // 메시지 저장에 실패하면 먼저 올라간 사진 파일도 지움
-      if (image_path) supabase.storage.from('chat-images').remove([image_path])
+      if (image_path) deleteMedia(image_path)
       return false
     }
     const m = data as Message

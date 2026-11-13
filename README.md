@@ -136,3 +136,18 @@ update private.settings set value = '새-코드' where key = 'invite_code';
 - 📷 버튼으로 사진과 같이 동영상(mp4·mov·webm, 50MB까지)도 보낼 수 있음. 동영상은 압축 없이 그대로 올라감
 - 채팅에서는 흐리게 가려진 "▶ 동영상 · 눌러서 보기", 누르면 재생. 모아보기에도 같이 나옴, 삭제 방법은 사진과 같음
 - 저장소 설정(크기 50MB, 동영상 형식 허용)을 바꾸는 011_videos.sql 실행 필요
+
+## 사진·동영상 저장소를 Cloudflare R2로 (무료 10GB, worker/media-worker.js, supabase/012_r2_media.sql)
+
+| 순서 | 할 일 |
+|---|---|
+| 1 | Cloudflare 가입·로그인 → R2 켜기 (카드 등록을 요구할 수 있음, 10GB까지 무료) |
+| 2 | R2 → 버킷 만들기 `everyone-chat-media` (비공개 그대로) |
+| 3 | Workers → 새 Worker → `worker/media-worker.js` 붙여넣기 → 배포 |
+| 4 | Worker 설정 → 바인딩 → R2 버킷: 변수 이름 `MEDIA`, 버킷 `everyone-chat-media` |
+| 5 | Supabase SQL Editor에서 `supabase/012_r2_media.sql` 실행 |
+| 6 | `src/config.ts`의 `MEDIA_URL`에 Worker 주소 넣고 배포 |
+
+- 비밀 키 없이 동작: Worker가 사용자의 로그인 토큰으로 Supabase에 "이 사람이 이 대화 당사자인가"를 물어보고 통과할 때만 파일을 줌
+- R2 사진은 주소를 복사해도 다른 사람은 열 수 없음 (로그인 토큰이 있어야 받음). 동영상은 95MB까지
+- 기존 Supabase 사진은 그대로 보이고, 새로 보내는 것부터 R2에 저장. Supabase 사진 임시 주소는 10분짜리로 줄임

@@ -146,7 +146,7 @@ update private.settings set value = '새-코드' where key = 'invite_code';
 | 3 | Workers → 새 Worker → `worker/media-worker.js` 붙여넣기 → 배포 |
 | 4 | Worker 설정 → 바인딩 → R2 버킷: 변수 이름 `MEDIA`, 버킷 `everyone-chat-media` |
 | 5 | Supabase SQL Editor에서 `supabase/012_r2_media.sql` 실행 |
-| 6 | `src/config.ts`의 `MEDIA_URL`에 Worker 주소 넣고 배포 |
+| 6 | `src/config.ts`의 `MEDIA_URL`에 Worker 주소 넣고 배포 (현재 https://media.everyone-chat-app.workers.dev) |
 
 - 비밀 키 없이 동작: Worker가 사용자의 로그인 토큰으로 Supabase에 "이 사람이 이 대화 당사자인가"를 물어보고 통과할 때만 파일을 줌
 - R2 사진은 주소를 복사해도 다른 사람은 열 수 없음 (로그인 토큰이 있어야 받음). 동영상은 95MB까지

@@ -32,6 +32,9 @@ begin
   if not public.is_member() then
     return;
   end if;
+  if not (public.can_delete_pending(p_path) or split_part(p_path, '/', 1) = auth.uid()::text) then
+    return;
+  end if;
   delete from public.pending_image_deletes where path = p_path and path like '%/r2/%';
 end;
 $$;
@@ -42,4 +45,4 @@ grant execute on function public.ack_media_delete(text) to authenticated;
 -- Worker가 쓰는 확인 함수 (이미 있으면 권한만 확인)
 grant execute on function public.is_member() to authenticated;
 grant execute on function public.is_admin() to authenticated;
-grant execute on function public.is_pending_image_delete(text) to authenticated;
+grant execute on function public.can_delete_pending(text) to authenticated;

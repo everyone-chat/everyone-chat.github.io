@@ -3,7 +3,8 @@
 //
 // Cloudflare 대시보드에서:
 //   1) R2 → 버킷 만들기: everyone-chat-media (비공개 그대로)
-//   2) Workers → 새 Worker 만들기 → 이 파일 내용을 붙여넣고 배포
+//   2) Workers → 새 Worker 만들기(이름 media, 계정 하위 도메인 everyone-chat-app) → 이 파일 내용을 붙여넣고 배포
+//      주소: https://media.everyone-chat-app.workers.dev
 //   3) Worker 설정 → 바인딩 → R2 버킷 추가: 변수 이름 MEDIA, 버킷 everyone-chat-media
 //
 // 비밀 키가 필요 없음: R2는 바인딩으로 연결하고,
@@ -92,7 +93,7 @@ export default {
     if (req.method === 'DELETE') {
       // 내가 올린 파일, 또는 지워진 메시지의 파일(정리 목록에 있는 것)만
       const mine = m[1] === uid
-      const pending = mine ? true : await rpc('is_pending_image_delete', token, { p_path: path })
+      const pending = mine ? true : await rpc('can_delete_pending', token, { p_path: path })
       if (!pending && !(await rpc('is_admin', token))) return new Response('forbidden', { status: 403, headers: h })
       await env.MEDIA.delete(path)
       await rpc('ack_media_delete', token, { p_path: path })

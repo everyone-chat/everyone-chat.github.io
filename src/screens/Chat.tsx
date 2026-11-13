@@ -88,6 +88,21 @@ export default function Chat({ me, profileMap, messages, peer, now, onBack, load
     return () => URL.revokeObjectURL(u)
   }, [file])
   const photos = messages.filter((m) => m.image_path)
+  // 클립보드에 사진이 있으면 붙여넣기(Ctrl+V / 길게 눌러 붙여넣기)로 보낼 사진에 올림
+  useEffect(() => {
+    const onPaste = (e: ClipboardEvent) => {
+      const items = Array.from(e.clipboardData?.items ?? [])
+      const it = items.find((x) => x.kind === 'file' && x.type.startsWith('image/'))
+      const f = it?.getAsFile()
+      if (!f) return
+      e.preventDefault()
+      setError('')
+      setFile(new File([f], f.name && f.name !== 'image.png' ? f.name : `붙여넣은 사진.${(f.type.split('/')[1] || 'png').replace('jpeg', 'jpg')}`, { type: f.type }))
+      inputRef.current?.focus({ preventScroll: true })
+    }
+    window.addEventListener('paste', onPaste)
+    return () => window.removeEventListener('paste', onPaste)
+  }, [])
   const listRef = useRef<HTMLDivElement>(null)
   const sendRef = useRef<HTMLButtonElement>(null)
   // 휴대폰: 보내기 버튼 터치가 입력창 포커스를 빼앗지 않도록 (passive가 아닌 리스너여야 막을 수 있음)
@@ -321,7 +336,7 @@ export default function Chat({ me, profileMap, messages, peer, now, onBack, load
             value={draft}
             onChange={(e) => onDraftChange(e.target.value)}
             maxLength={500}
-            placeholder="메시지 보내기"
+            placeholder={file ? "사진과 함께 보낼 말 (선택)" : "메시지 보내기"}
             enterKeyHint="send"
             className="min-w-0 flex-1 rounded-full border-2 border-white bg-white px-4 py-2.5 text-base outline-none focus:border-accent"
           />

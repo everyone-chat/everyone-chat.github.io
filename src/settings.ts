@@ -11,7 +11,16 @@ export type Settings = {
   secretMinutes: number
   /** 색 테마 */
   theme: ThemeId
+  /** 채팅방 모양 */
+  chatSkin: ChatSkin
 }
+
+export type ChatSkin = 'bubble' | 'sheet' | 'mail'
+export const CHAT_SKINS: { id: ChatSkin; label: string; desc: string }[] = [
+  { id: 'bubble', label: '💬 말풍선', desc: '기본 채팅 모양' },
+  { id: 'sheet', label: '▦ 표', desc: '엑셀 같은 업무 표처럼 보여요' },
+  { id: 'mail', label: '✉ 메일', desc: '업무 메일 스레드처럼 보여요' },
+]
 
 export type ThemeId = 'pink' | 'lavender' | 'mint' | 'sky' | 'peach' | 'night'
 export const THEMES: { id: ThemeId; label: string; colors: [string, string] }[] = [
@@ -47,7 +56,7 @@ export const SIZE_OPTIONS: { id: ViewSize; label: string; desc: string }[] = [
 export const SECRET_MINUTES = [1, 3, 5, 10, 30]
 
 const KEY = 'bondee-settings'
-const DEFAULT: Settings = { size: 'normal', secretOn: false, secretMinutes: 5, theme: 'pink' }
+const DEFAULT: Settings = { size: 'normal', secretOn: false, secretMinutes: 5, theme: 'pink', chatSkin: 'bubble' }
 
 export function read(): Settings {
   try {
@@ -57,6 +66,7 @@ export function read(): Settings {
       secretOn: typeof raw.secretOn === 'boolean' ? raw.secretOn : DEFAULT.secretOn,
       secretMinutes: SECRET_MINUTES.includes(raw.secretMinutes) ? raw.secretMinutes : DEFAULT.secretMinutes,
       theme: THEMES.some((t) => t.id === raw.theme) ? raw.theme : DEFAULT.theme,
+      chatSkin: CHAT_SKINS.some((t) => t.id === raw.chatSkin) ? raw.chatSkin : DEFAULT.chatSkin,
     }
   } catch {
     return DEFAULT

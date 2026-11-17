@@ -1,4 +1,4 @@
-import { SECRET_MINUTES, SIZE_OPTIONS, THEMES, type Settings } from '../settings'
+import { CHAT_SKINS, SECRET_MINUTES, SIZE_OPTIONS, THEMES, type Settings } from '../settings'
 
 type Props = {
   settings: Settings
@@ -31,6 +31,21 @@ export default function ViewSettings({ settings, update, onSecretNow }: Props) {
           </button>
         ))}
       </div>
+
+      <span className="mb-1.5 block text-sm text-ink-soft">채팅방 모양</span>
+      <div className="mb-1 grid grid-cols-3 gap-2">
+        {CHAT_SKINS.map((o) => (
+          <button
+            key={o.id}
+            onClick={() => update({ chatSkin: o.id })}
+            className={`squish rounded-2xl bg-white/80 py-2.5 text-sm ${settings.chatSkin === o.id ? 'shadow-[0_0_0_3px_var(--color-accent)]' : ''}`}
+            aria-pressed={settings.chatSkin === o.id}
+          >
+            {o.label}
+          </button>
+        ))}
+      </div>
+      <p className="mb-5 text-xs text-ink-soft">{CHAT_SKINS.find((o) => o.id === settings.chatSkin)?.desc} · 사진은 눌러야 열려요</p>
 
       <span className="mb-1.5 block text-sm text-ink-soft">PC 화면 크기</span>
       <div className="mb-1 grid grid-cols-4 gap-1.5">

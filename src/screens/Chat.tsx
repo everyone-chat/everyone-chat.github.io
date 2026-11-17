@@ -2,7 +2,8 @@ import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import Avatar from '../components/Avatar'
 import ChatImage, { GalleryThumb } from '../components/ChatImage'
 import { LinkSheet, LinkText } from '../components/LinkText'
-import { MAX_VIDEO_MB, isVideoFile, isVideoPath } from '../images'
+import { MAX_VIDEO_MB, imageUrl, isVideoFile, isVideoPath } from '../images'
+import type { ChatSkin } from '../settings'
 import { isOnline, type Message, type Profile } from '../types'
 
 type Props = {
@@ -20,6 +21,8 @@ type Props = {
   onClearAll: () => Promise<boolean>
   /** 상대가 읽은 마지막 메시지 번호 (이보다 큰 내 메시지는 '1' 표시) */
   peerReadId: number
+  /** 채팅방 모양: 말풍선 / 표(엑셀 느낌) / 메일 */
+  skin?: ChatSkin
 }
 
 const fmtTime = (iso: string) =>
@@ -28,7 +31,37 @@ const fmtDate = (iso: string) =>
   new Date(iso).toLocaleDateString('ko-KR', { month: 'long', day: 'numeric', weekday: 'short' })
 const dayKey = (iso: string) => new Date(iso).toDateString()
 
-export default function Chat({ me, profileMap, messages, peer, now, onBack, loading, draft, onDraftChange, onSend, onDelete, onClearAll, peerReadId }: Props) {
+const SKINS: Record<ChatSkin, { root: string; header: string; list: string; form: string; attach: string; input: string; send: string }> = {
+  bubble: {
+    root: 'bg-gradient-to-b from-[var(--bg-cool)] to-[var(--bg-warm)]',
+    header: '',
+    list: 'no-scrollbar px-4 py-4',
+    form: 'border-t border-white/70 bg-white/70 px-3 py-2.5 backdrop-blur',
+    attach: 'squish grid h-11 w-11 shrink-0 place-items-center rounded-full bg-white text-xl',
+    input: 'min-w-0 flex-1 rounded-full border-2 border-white bg-white px-4 py-2.5 text-base outline-none focus:border-accent',
+    send: 'squish grid h-11 w-11 shrink-0 place-items-center rounded-full bg-accent text-lg text-white shadow-[0_3px_0_var(--color-accent-deep)] disabled:opacity-40',
+  },
+  sheet: {
+    root: 'bg-[#ffffff] text-[#202124]',
+    header: 'flex items-center justify-between gap-2 border-b border-[#dadce0] bg-[#ffffff] px-2 py-2',
+    list: 'bg-[#ffffff]',
+    form: 'border-t border-[#dadce0] bg-[#f8f9fa] px-2 py-1.5 text-[#202124]',
+    attach: 'shrink-0 rounded border border-[#dadce0] bg-[#ffffff] px-2 py-1 text-[12px] text-[#3c4043]',
+    input: 'min-w-0 flex-1 border border-[#dadce0] bg-[#ffffff] px-2 py-1.5 text-[16px] text-[#202124] outline-none focus:border-[#1a73e8] md:text-[13px]',
+    send: 'shrink-0 rounded bg-[#1e8e3e] px-3 py-1.5 text-[12px] text-[#ffffff] disabled:opacity-40',
+  },
+  mail: {
+    root: 'bg-[#f6f8fc] text-[#202124]',
+    header: 'flex items-center justify-between gap-2 border-b border-[#e0e0e0] bg-[#ffffff] px-2 py-2.5',
+    list: 'bg-[#f6f8fc] pb-2',
+    form: 'border-t border-[#e0e0e0] bg-[#ffffff] px-3 py-2 text-[#202124]',
+    attach: 'grid h-9 w-9 shrink-0 place-items-center rounded-full text-[16px] text-[#5f6368] hover:bg-black/5',
+    input: 'min-w-0 flex-1 rounded-lg border border-[#dadce0] bg-[#ffffff] px-3 py-2 text-[16px] text-[#202124] outline-none focus:border-[#1a73e8] md:text-[14px]',
+    send: 'shrink-0 rounded-full bg-[#0b57d0] px-4 py-2 text-[13px] text-[#ffffff] disabled:opacity-40',
+  },
+}
+
+export default function Chat({ me, profileMap, messages, peer, now, onBack, loading, draft, onDraftChange, onSend, onDelete, onClearAll, peerReadId, skin = 'bubble' }: Props) {
   // 상대가 어디까지 읽었나: 읽음 기록 + 상대가 답장을 보냈으면 그 앞 메시지는 당연히 읽은 것
   let readUpTo = peerReadId
   for (const m of messages) if (m.user_id === peer.id && m.id > readUpTo) readUpTo = m.id
@@ -168,8 +201,121 @@ export default function Chat({ me, profileMap, messages, peer, now, onBack, load
     } else setError(file ? `${isVideoFile(file) ? '동영상' : '사진'} 전송에 실패했어요. 다시 시도해 주세요.` : '전송에 실패했어요. 다시 시도해 주세요.')
   }
 
+  // ---------- 채팅방 모양별 스타일 ----------
+  const SK = SKINS[skin]
+
+  /** 표·메일 모양의 한 줄 (꾹 누르기/오른쪽 클릭 삭제, 사진은 눌러야 보임) */
+  function altRow(m: Message, i: number, mine: boolean, name: string, newDay: boolean) {
+    const can = mine || me.is_admin
+    const status = mine ? (m.id > readUpTo ? '안읽음' : '읽음') : ''
+    const media = m.image_path ? (isVideoPath(m.image_path) ? '동영상' : '이미지') : null
+    const openMedia = async () => {
+      if (!m.image_path) return
+      const url = await imageUrl(m.image_path)
+      if (url) {
+        setConfirmDel(false)
+        setViewer({ url, msg: m })
+      } else setError('파일을 불러올 수 없어요.')
+    }
+    const menu =
+      menuId === m.id ? (
+        <span className="ml-2 inline-flex gap-1 align-middle">
+          <button
+            onClick={async (e) => {
+              e.stopPropagation()
+              const ok = await onDelete(m.id)
+              setMenuId(null)
+              if (!ok) setError('삭제에 실패했어요.')
+            }}
+            className="rounded border border-[#d93025] px-1.5 text-[11px] text-[#d93025]"
+          >
+            삭제{!mine && '(마스터)'}
+          </button>
+          <button onClick={(e) => { e.stopPropagation(); setMenuId(null) }} className="rounded border border-[#dadce0] px-1.5 text-[11px] text-[#5f6368]">
+            취소
+          </button>
+        </span>
+      ) : null
+    const rowProps = {
+      ...pressProps(m.id, can),
+      onClick: (e: React.MouseEvent) => {
+        if (can && (e.nativeEvent as PointerEvent).pointerType !== 'touch') setMenuId(menuId === m.id ? null : m.id)
+      },
+    }
+
+    if (skin === 'sheet') {
+      return (
+        <div key={m.id}>
+          {newDay && (
+            <div className="grid grid-cols-[34px_1fr] border-b border-[#e0e0e0] text-[12px]">
+              <span className="border-r border-[#e0e0e0] bg-[#f8f9fa] py-1 text-center text-[#5f6368]" />
+              <span className="bg-[#e8f0fe] px-2 py-1 font-bold text-[#202124]">{fmtDate(m.created_at)}</span>
+            </div>
+          )}
+          <div {...rowProps} className="no-callout grid grid-cols-[34px_52px_72px_1fr_52px] border-b border-[#e0e0e0] text-[12px] text-[#202124] hover:bg-[#f1f3f4]">
+            <span className="border-r border-[#e0e0e0] bg-[#f8f9fa] py-1 text-center text-[#5f6368]">{i + 1}</span>
+            <span className="border-r border-[#e0e0e0] px-1.5 py-1 tabular-nums text-[#5f6368]">{fmtTime(m.created_at).replace(/^오[전후] /, '')}</span>
+            <span className={`truncate border-r border-[#e0e0e0] px-1.5 py-1 ${mine ? 'text-[#1a73e8]' : ''}`}>{mine ? '나' : name}</span>
+            <span className="min-w-0 whitespace-pre-wrap break-words border-r border-[#e0e0e0] px-1.5 py-1">
+              {media && (
+                <button onClick={(e) => { e.stopPropagation(); openMedia() }} className="mr-1 text-[#1a73e8] underline">
+                  [{media}]
+                </button>
+              )}
+              {m.content && <LinkText text={m.content} onLink={setLink} />}
+              {menu}
+            </span>
+            <span className={`px-1 py-1 text-center ${status === '안읽음' ? 'text-[#d93025]' : 'text-[#5f6368]'}`}>{status}</span>
+          </div>
+        </div>
+      )
+    }
+
+    // 메일
+    return (
+      <div key={m.id}>
+        {newDay && <p className="px-4 pb-1 pt-4 text-[11px] font-bold text-[#5f6368]">{fmtDate(m.created_at)}</p>}
+        <div {...rowProps} className="no-callout mx-3 mb-2 rounded-lg border border-[#e0e0e0] bg-[#ffffff] px-3.5 py-3 text-[#202124] hover:shadow-sm">
+          <div className="mb-1.5 flex items-center gap-2">
+            <span className={`grid h-7 w-7 shrink-0 place-items-center rounded-full text-[12px] text-white ${mine ? 'bg-[#1a73e8]' : 'bg-[#5f6368]'}`}>
+              {(mine ? me.nickname : name).slice(0, 1)}
+            </span>
+            <div className="min-w-0 flex-1">
+              <p className="truncate text-[13px] font-bold leading-tight">
+                {mine ? me.nickname : name}
+                <span className="font-normal text-[#5f6368]"> {mine ? '→ ' + peer.nickname : '→ 나'}</span>
+              </p>
+            </div>
+            <span className="shrink-0 text-[11px] text-[#5f6368]">{fmtTime(m.created_at)}</span>
+          </div>
+          {m.content && (
+            <p className="whitespace-pre-wrap break-words pl-9 text-[13.5px] leading-relaxed">
+              <LinkText text={m.content} onLink={setLink} />
+            </p>
+          )}
+          {media && (
+            <button
+              onClick={(e) => {
+                e.stopPropagation()
+                openMedia()
+              }}
+              className="ml-9 mt-1.5 inline-flex items-center gap-1 rounded border border-[#dadce0] px-2 py-1 text-[12px] text-[#3c4043]"
+            >
+              📎 첨부{media} 열기
+            </button>
+          )}
+          <div className="mt-1 flex items-center justify-end">
+            {status && <span className={`text-[11px] ${status === '안읽음' ? 'text-[#d93025]' : 'text-[#5f6368]'}`}>{status === '안읽음' ? '읽지 않음' : '읽음'}</span>}
+            {menu}
+          </div>
+        </div>
+      </div>
+    )
+  }
+
   return (
-    <div className="flex h-full flex-col bg-gradient-to-b from-[var(--bg-cool)] to-[var(--bg-warm)]">
+    <div className={`flex h-full flex-col ${SK.root}`}>
+      {skin === 'bubble' ? (
       <header className="flex items-center justify-between border-b border-white/70 bg-white/60 px-5 pb-3 pt-5 backdrop-blur">
         <div className="flex min-w-0 items-center gap-2">
           <button onClick={onBack} className="squish -ml-2 grid h-10 w-10 shrink-0 place-items-center rounded-full text-2xl" aria-label="뒤로">
@@ -212,6 +358,57 @@ export default function Chat({ me, profileMap, messages, peer, now, onBack, load
         ) : null}
         </div>
       </header>
+      ) : (
+        <header className={SK.header}>
+          <div className="flex min-w-0 items-center gap-1.5">
+            <button onClick={onBack} className="grid h-8 w-8 shrink-0 place-items-center rounded text-lg text-[#5f6368] hover:bg-black/5" aria-label="뒤로">
+              ‹
+            </button>
+            {skin === 'sheet' ? (
+              <>
+                <span className="grid h-6 w-6 shrink-0 place-items-center rounded-sm bg-[#1e8e3e] text-[11px] font-bold text-white">▦</span>
+                <div className="min-w-0">
+                  <h1 className="truncate text-[14px] leading-tight text-[#202124]">{peer.nickname}_업무정리</h1>
+                  <p className="text-[11px] leading-tight text-[#5f6368]">{isOnline(peer, now) ? '공동 편집 중 · 자동 저장됨' : '자동 저장됨'}</p>
+                </div>
+              </>
+            ) : (
+              <div className="min-w-0">
+                <h1 className="truncate text-[15px] leading-tight text-[#202124]">RE: {peer.nickname}님 업무 협의 건</h1>
+                <p className="text-[11px] leading-tight text-[#5f6368]">받은편지함 · {messages.length}개의 메일{isOnline(peer, now) ? ' · 상대 온라인' : ''}</p>
+              </div>
+            )}
+          </div>
+          <div className="flex shrink-0 items-center gap-1">
+            <button
+              onClick={() => {
+                setRevealAll(false)
+                setGallery(true)
+              }}
+              className="rounded px-2 py-1 text-[12px] text-[#5f6368] hover:bg-black/5"
+            >
+              {skin === 'sheet' ? '이미지' : '첨부파일'}
+            </button>
+            {me.is_admin && (
+              <button
+                onClick={async () => {
+                  if (!confirmClear) {
+                    setConfirmClear(true)
+                    setTimeout(() => setConfirmClear(false), 4000)
+                    return
+                  }
+                  setConfirmClear(false)
+                  const ok = await onClearAll()
+                  if (!ok) setError('전체 삭제에 실패했어요.')
+                }}
+                className={`rounded px-2 py-1 text-[12px] ${confirmClear ? 'bg-[#d93025] text-white' : 'text-[#d93025] hover:bg-black/5'}`}
+              >
+                {confirmClear ? '한 번 더 눌러 전부 삭제' : skin === 'sheet' ? '시트 비우기' : '전체 삭제'}
+              </button>
+            )}
+          </div>
+        </header>
+      )}
 
       <div
         ref={listRef}
@@ -219,10 +416,21 @@ export default function Chat({ me, profileMap, messages, peer, now, onBack, load
           const el = e.currentTarget
           nearBottom.current = el.scrollHeight - el.scrollTop - el.clientHeight < 120
         }}
-        className="no-scrollbar flex-1 overflow-y-auto px-4 py-4"
+        className={`flex-1 overflow-y-auto ${SK.list}`}
       >
+        {skin === 'sheet' && (
+          <div className="sticky top-0 z-10 grid grid-cols-[34px_52px_72px_1fr_52px] border-b border-[#dadce0] bg-[#f8f9fa] text-center text-[11px] text-[#5f6368]">
+            <span className="border-r border-[#e0e0e0] py-1" />
+            {['A', 'B', 'C', 'D'].map((c) => (
+              <span key={c} className="border-r border-[#e0e0e0] py-1">{c}</span>
+            ))}
+          </div>
+        )}
         {loading && <p className="py-10 text-center text-sm text-ink-soft">대화를 불러오는 중…</p>}
-        {!loading && messages.length === 0 && (
+        {!loading && messages.length === 0 && skin !== 'bubble' && (
+          <p className="py-16 text-center text-[13px] text-[#5f6368]">{skin === 'sheet' ? '빈 시트예요. 아래 입력칸에 적어 보세요.' : '받은 메일이 없어요.'}</p>
+        )}
+        {!loading && messages.length === 0 && skin === 'bubble' && (
           <div className="py-16 text-center text-ink-soft">
             <div className="mb-2 text-4xl">🐣</div>
             첫 인사를 남겨 보세요!
@@ -238,6 +446,7 @@ export default function Chat({ me, profileMap, messages, peer, now, onBack, load
           const grouped = !newDay && prev?.user_id === m.user_id
           const showTime =
             !next || next.user_id !== m.user_id || fmtTime(next.created_at) !== fmtTime(m.created_at) || dayKey(next.created_at) !== dayKey(m.created_at)
+          if (skin !== 'bubble') return altRow(m, i, mine, author?.nickname ?? '(알 수 없음)', newDay)
 
           return (
             <div key={m.id}>
@@ -307,7 +516,7 @@ export default function Chat({ me, profileMap, messages, peer, now, onBack, load
         })}
       </div>
 
-      <form onSubmit={submit} className="border-t border-white/70 bg-white/70 px-3 py-2.5 backdrop-blur">
+      <form onSubmit={submit} className={SK.form}>
         {error && <p className="mb-1.5 px-2 text-xs text-accent-deep">{error}</p>}
         {preview && (
           <div className="mb-2 flex items-center gap-2 px-1">
@@ -342,19 +551,20 @@ export default function Chat({ me, profileMap, messages, peer, now, onBack, load
           <button
             type="button"
             onClick={() => fileRef.current?.click()}
-            className="squish grid h-11 w-11 shrink-0 place-items-center rounded-full bg-white text-xl"
+            className={SK.attach}
             aria-label="사진·동영상 보내기"
           >
-            📷
+            {skin === 'bubble' ? '📷' : skin === 'sheet' ? '첨부' : '📎'}
           </button>
+          {skin === 'sheet' && <span className="shrink-0 font-serif text-[13px] italic text-[#5f6368]">fx</span>}
           <input
             ref={inputRef}
             value={draft}
             onChange={(e) => onDraftChange(e.target.value)}
             maxLength={500}
-            placeholder={file ? "사진과 함께 보낼 말 (선택)" : "메시지 보내기"}
+            placeholder={file ? '사진과 함께 보낼 말 (선택)' : skin === 'sheet' ? '' : skin === 'mail' ? '답장 작성…' : '메시지 보내기'}
             enterKeyHint="send"
-            className="min-w-0 flex-1 rounded-full border-2 border-white bg-white px-4 py-2.5 text-base outline-none focus:border-accent"
+            className={SK.input}
           />
           <button
             // 보내기 버튼을 눌러도 입력창 포커스를 뺏지 않음 → 휴대폰 자판이 닫혔다 다시 열리며 화면이 출렁이지 않게
@@ -362,10 +572,10 @@ export default function Chat({ me, profileMap, messages, peer, now, onBack, load
             onMouseDown={(e) => e.preventDefault()}
             ref={sendRef}
             disabled={(!draft.trim() && !file) || sending}
-            className="squish grid h-11 w-11 shrink-0 place-items-center rounded-full bg-accent text-lg text-white shadow-[0_3px_0_var(--color-accent-deep)] disabled:opacity-40"
+            className={SK.send}
             aria-label="보내기"
           >
-            ➤
+            {skin === 'bubble' ? '➤' : skin === 'sheet' ? '입력' : '보내기'}
           </button>
         </div>
       </form>

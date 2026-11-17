@@ -513,6 +513,7 @@ export default function App() {
               onDelete={deleteMessage}
               onClearAll={clearConversation}
               peerReadId={reads[`${peerProfile.id}:${me.id}`] ?? 0}
+              skin={settings.chatSkin}
             />
           ) : (
             <ChatList friends={friends} lastByPeer={lastByPeer} unread={unread} now={now} onOpen={openChat} onAddFriend={() => setTab('me')} />

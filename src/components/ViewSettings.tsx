@@ -1,4 +1,4 @@
-import { SECRET_MINUTES, SIZE_OPTIONS, type Settings } from '../settings'
+import { SECRET_MINUTES, SIZE_OPTIONS, THEMES, type Settings } from '../settings'
 
 type Props = {
   settings: Settings
@@ -11,6 +11,26 @@ export default function ViewSettings({ settings, update, onSecretNow }: Props) {
     <section className="mt-7 rounded-[28px] border-2 border-white bg-white/70 px-5 py-6">
       <h2 className="mb-2 font-cute text-lg">화면 설정</h2>
       <p className="mb-4 text-xs leading-relaxed text-ink-soft">이 기기에만 저장돼요.</p>
+
+      <span className="mb-1.5 block text-sm text-ink-soft">테마</span>
+      <div className="mb-5 grid grid-cols-3 gap-2">
+        {THEMES.map((t) => (
+          <button
+            key={t.id}
+            onClick={() => update({ theme: t.id })}
+            className={`squish flex items-center gap-2 rounded-2xl bg-white/80 px-3 py-2.5 text-sm ${
+              settings.theme === t.id ? 'shadow-[0_0_0_3px_var(--color-accent)]' : ''
+            }`}
+            aria-pressed={settings.theme === t.id}
+          >
+            <span
+              className="h-6 w-6 shrink-0 rounded-full border-2 border-white"
+              style={{ background: `linear-gradient(135deg, ${t.colors[0]} 50%, ${t.colors[1]} 50%)` }}
+            />
+            {t.label}
+          </button>
+        ))}
+      </div>
 
       <span className="mb-1.5 block text-sm text-ink-soft">PC 화면 크기</span>
       <div className="mb-1 grid grid-cols-4 gap-1.5">
@@ -35,7 +55,7 @@ export default function ViewSettings({ settings, update, onSecretNow }: Props) {
           role="switch"
           aria-checked={settings.secretOn}
           onClick={() => update({ secretOn: !settings.secretOn })}
-          className={`relative h-7 w-12 shrink-0 rounded-full transition-colors ${settings.secretOn ? 'bg-accent' : 'bg-[#D9D3E3]'}`}
+          className={`relative h-7 w-12 shrink-0 rounded-full transition-colors ${settings.secretOn ? 'bg-accent' : 'bg-[var(--line)]'}`}
         >
           <span className={`absolute top-1 h-5 w-5 rounded-full bg-white shadow transition-all ${settings.secretOn ? 'left-6' : 'left-1'}`} />
         </button>

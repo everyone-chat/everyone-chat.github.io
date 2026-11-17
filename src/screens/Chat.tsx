@@ -169,7 +169,7 @@ export default function Chat({ me, profileMap, messages, peer, now, onBack, load
   }
 
   return (
-    <div className="flex h-full flex-col bg-gradient-to-b from-[#E6F3FF] to-[#FFF4F8]">
+    <div className="flex h-full flex-col bg-gradient-to-b from-[var(--bg-cool)] to-[var(--bg-warm)]">
       <header className="flex items-center justify-between border-b border-white/70 bg-white/60 px-5 pb-3 pt-5 backdrop-blur">
         <div className="flex min-w-0 items-center gap-2">
           <button onClick={onBack} className="squish -ml-2 grid h-10 w-10 shrink-0 place-items-center rounded-full text-2xl" aria-label="뒤로">
@@ -269,7 +269,7 @@ export default function Chat({ me, profileMap, messages, peer, now, onBack, load
                       className={`whitespace-pre-wrap break-words px-3.5 py-2 text-[15px] leading-snug shadow-sm ${
                         mine || me.is_admin ? 'cursor-pointer' : ''
                       } ${
-                        mine ? 'rounded-[20px] rounded-br-md text-ink' : 'rounded-[20px] rounded-bl-md bg-white'
+                        mine ? 'rounded-[20px] rounded-br-md text-[#4A4560]' : 'rounded-[20px] rounded-bl-md bg-white'
                       }`}
                       style={mine ? { background: me.color } : undefined}
                     >
@@ -371,7 +371,7 @@ export default function Chat({ me, profileMap, messages, peer, now, onBack, load
       </form>
 
       {gallery && (
-        <div className="fade-in fixed inset-0 z-40 flex flex-col bg-[#FFF7FA]">
+        <div className="fade-in fixed inset-0 z-40 flex flex-col bg-[var(--bg-warm)]">
           <header className="flex items-center justify-between border-b border-white bg-white/80 px-4 py-3">
             <button onClick={() => setGallery(false)} className="squish grid h-10 w-10 place-items-center rounded-full text-2xl" aria-label="닫기">
               ‹

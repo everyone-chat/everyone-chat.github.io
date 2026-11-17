@@ -9,6 +9,33 @@ export type Settings = {
   secretOn: boolean
   /** 시크릿 모드로 바뀌는 시간 (분) */
   secretMinutes: number
+  /** 색 테마 */
+  theme: ThemeId
+}
+
+export type ThemeId = 'pink' | 'lavender' | 'mint' | 'sky' | 'peach' | 'night'
+export const THEMES: { id: ThemeId; label: string; colors: [string, string] }[] = [
+  { id: 'pink', label: '핑크', colors: ['#FF8FB1', '#E6F3FF'] },
+  { id: 'lavender', label: '라벤더', colors: ['#A98BF5', '#EEEAFF'] },
+  { id: 'mint', label: '민트', colors: ['#4FC9A0', '#E2F7F0'] },
+  { id: 'sky', label: '하늘', colors: ['#5AA8F2', '#DCEDFF'] },
+  { id: 'peach', label: '피치', colors: ['#FF9A66', '#FFF0E4'] },
+  { id: 'night', label: '밤', colors: ['#FF8FB1', '#2E2A3D'] },
+]
+
+/** 테마를 화면 전체에 적용 (html의 data-theme + 휴대폰 상단 바 색) */
+export function applyTheme(theme: ThemeId) {
+  const root = document.documentElement
+  if (theme === 'pink') root.removeAttribute('data-theme')
+  else root.setAttribute('data-theme', theme)
+  const page = getComputedStyle(root).getPropertyValue('--page').trim()
+  let meta = document.querySelector('meta[name="theme-color"]')
+  if (!meta) {
+    meta = document.createElement('meta')
+    meta.setAttribute('name', 'theme-color')
+    document.head.appendChild(meta)
+  }
+  if (page) meta.setAttribute('content', page)
 }
 
 export const SIZE_OPTIONS: { id: ViewSize; label: string; desc: string }[] = [
@@ -20,15 +47,16 @@ export const SIZE_OPTIONS: { id: ViewSize; label: string; desc: string }[] = [
 export const SECRET_MINUTES = [1, 3, 5, 10, 30]
 
 const KEY = 'bondee-settings'
-const DEFAULT: Settings = { size: 'normal', secretOn: false, secretMinutes: 5 }
+const DEFAULT: Settings = { size: 'normal', secretOn: false, secretMinutes: 5, theme: 'pink' }
 
-function read(): Settings {
+export function read(): Settings {
   try {
     const raw = JSON.parse(localStorage.getItem(KEY) || '{}')
     return {
       size: SIZE_OPTIONS.some((o) => o.id === raw.size) ? raw.size : DEFAULT.size,
       secretOn: typeof raw.secretOn === 'boolean' ? raw.secretOn : DEFAULT.secretOn,
       secretMinutes: SECRET_MINUTES.includes(raw.secretMinutes) ? raw.secretMinutes : DEFAULT.secretMinutes,
+      theme: THEMES.some((t) => t.id === raw.theme) ? raw.theme : DEFAULT.theme,
     }
   } catch {
     return DEFAULT
@@ -37,6 +65,7 @@ function read(): Settings {
 
 export function useSettings() {
   const [settings, setSettings] = useState<Settings>(read)
+  useEffect(() => applyTheme(settings.theme), [settings.theme])
   const update = useCallback((patch: Partial<Settings>) => {
     setSettings((s) => {
       const next = { ...s, ...patch }

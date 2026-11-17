@@ -16,7 +16,7 @@ export default function BottomNav({ tab, unread, onChange }: { tab: Tab; unread:
             <button
               key={it.id}
               onClick={() => onChange(it.id)}
-              className={`squish relative flex w-[4.5rem] flex-col items-center rounded-2xl py-1.5 ${active ? 'bg-[#FFE4EE]' : ''}`}
+              className={`squish relative flex w-[4.5rem] flex-col items-center rounded-2xl py-1.5 ${active ? 'bg-[var(--accent-soft)]' : ''}`}
             >
               <span className={`text-2xl transition-transform ${active ? 'scale-110' : 'opacity-70 grayscale-[40%]'}`}>{it.icon}</span>
               <span className={`font-cute text-xs ${active ? 'text-accent-deep' : 'text-ink-soft'}`}>{it.label}</span>

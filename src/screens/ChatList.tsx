@@ -26,7 +26,7 @@ export default function ChatList({ friends, lastByPeer, unread, now, onOpen, onA
   })
 
   return (
-    <div className="flex h-full flex-col bg-gradient-to-b from-[#E6F3FF] to-[#FFF4F8]">
+    <div className="flex h-full flex-col bg-gradient-to-b from-[var(--bg-cool)] to-[var(--bg-warm)]">
       <header className="border-b border-white/70 bg-white/60 px-5 pb-3 pt-5 backdrop-blur">
         <h1 className="font-cute text-2xl leading-tight">채팅</h1>
         <p className="text-sm text-ink-soft">친구와 1:1로 대화해요</p>

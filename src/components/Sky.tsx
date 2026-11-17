@@ -9,7 +9,7 @@ const CLOUDS = [
 export default function Sky() {
   return (
     <div className="pointer-events-none absolute inset-0 overflow-hidden" aria-hidden>
-      <div className="absolute inset-0 bg-gradient-to-b from-[#BFE2FF] via-[#E2F1FF] to-[#FFEFF5]" />
+      <div className="absolute inset-0 bg-gradient-to-b from-[var(--sky-1)] via-[var(--sky-2)] to-[var(--sky-3)]" />
       {CLOUDS.map((c, i) => (
         <div
           key={i}

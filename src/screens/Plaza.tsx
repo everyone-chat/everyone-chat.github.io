@@ -63,7 +63,7 @@ export default function Plaza({ me, profiles, now, onChangeStatus, onGreet, onKi
     saveStatus === 'saving' ? '저장 중…' : saveStatus === 'saved' ? '저장됨 ✓' : saveStatus === 'error' ? '저장 실패 · 다시 시도' : '자동 저장'
 
   return (
-    <div className="flex h-full flex-col bg-gradient-to-b from-[#FFF0F5] to-[#EAF5FF]">
+    <div className="flex h-full flex-col bg-gradient-to-b from-[var(--bg-warm)] to-[var(--bg-cool)]">
       <header className="flex items-center justify-between gap-2 px-5 pb-2 pt-5">
         <div className="min-w-0">
           <h1 className="font-cute text-2xl leading-tight">마이룸</h1>

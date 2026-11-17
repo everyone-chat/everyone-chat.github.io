@@ -11,6 +11,49 @@
   --color-accent-deep: #F06B98;
 }
 
+/* ---------- 테마 (나 탭 → 화면 설정, 이 기기에만 저장) ---------- */
+:root {
+  --bg-cool: #E6F3FF;
+  --bg-warm: #FFF4F8;
+  --accent-soft: #FFE4EE;
+  --line: #E4DDEA;
+  --sky-1: #BFE2FF;
+  --sky-2: #E2F1FF;
+  --sky-3: #FFEFF5;
+  --page: #EAF5FF;
+}
+:root[data-theme='lavender'] {
+  --color-accent: #A98BF5; --color-accent-deep: #8A68E8;
+  --bg-cool: #EEEAFF; --bg-warm: #FBF6FF; --accent-soft: #ECE4FF; --line: #E2DAF2;
+  --sky-1: #D9CCFF; --sky-2: #EEE8FF; --sky-3: #FFF0FA; --page: #F1ECFF;
+}
+:root[data-theme='mint'] {
+  --color-accent: #4FC9A0; --color-accent-deep: #2FAE84;
+  --bg-cool: #E2F7F0; --bg-warm: #F5FFF9; --accent-soft: #D5F3E8; --line: #D6E9E1;
+  --sky-1: #BDEBDC; --sky-2: #E3F7F0; --sky-3: #FFFBEF; --page: #E8F8F2;
+}
+:root[data-theme='sky'] {
+  --color-accent: #5AA8F2; --color-accent-deep: #3887DD;
+  --bg-cool: #DCEDFF; --bg-warm: #F4F9FF; --accent-soft: #DCEAFF; --line: #D8E3F0;
+  --sky-1: #A9D3FF; --sky-2: #DAECFF; --sky-3: #F4F9FF; --page: #E3F0FF;
+}
+:root[data-theme='peach'] {
+  --color-accent: #FF9A66; --color-accent-deep: #F07A3E;
+  --bg-cool: #FFF0E4; --bg-warm: #FFF9F3; --accent-soft: #FFE5D2; --line: #EFDFD3;
+  --sky-1: #FFD7BD; --sky-2: #FFEBDD; --sky-3: #FFF8F1; --page: #FFF1E6;
+}
+/* 밤(다크): 흰 바탕 칸을 어두운 색으로, 글자를 밝게 */
+:root[data-theme='night'] {
+  color-scheme: dark;
+  --color-white: #2E2A3D;
+  --color-cream: #262233;
+  --color-ink: #EEEAF7;
+  --color-ink-soft: #ABA4C2;
+  --color-accent: #FF8FB1; --color-accent-deep: #E8709A;
+  --bg-cool: #1C1A28; --bg-warm: #252033; --accent-soft: #3D3150; --line: #4A4560;
+  --sky-1: #15142A; --sky-2: #221E38; --sky-3: #33284A; --page: #1C1A28;
+}
+
 /* 기본 스타일은 base 레이어에 둬야 text-white 같은 유틸리티가 덮어쓸 수 있음 */
 @layer base {
   html, body, #root {
@@ -21,7 +64,7 @@
     margin: 0;
     font-family: var(--font-body);
     color: var(--color-ink);
-    background: #EAF5FF;
+    background: var(--page);
     -webkit-tap-highlight-color: transparent;
     overscroll-behavior: none;
     overflow: hidden;

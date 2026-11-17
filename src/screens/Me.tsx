@@ -49,7 +49,7 @@ export default function Me({ me, onSaveProfile, onChangeStatus, onClaimAdmin, on
   }
 
   return (
-    <div className="no-scrollbar h-full overflow-y-auto bg-gradient-to-b from-[#FFF0F5] to-[#EAF5FF]">
+    <div className="no-scrollbar h-full overflow-y-auto bg-gradient-to-b from-[var(--bg-warm)] to-[var(--bg-cool)]">
       <div className="mx-auto max-w-md px-5 pb-12 pt-7">
         <h1 className="mb-6 font-cute text-2xl">나</h1>
 

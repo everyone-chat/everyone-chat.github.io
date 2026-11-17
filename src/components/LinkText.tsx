@@ -66,7 +66,7 @@ export function LinkSheet({ url, onClose }: { url: string; onClose: () => void }
           🕶 시크릿 창으로 열기 (링크 복사)
         </button>
         {copied && (
-          <div className="pop rounded-2xl bg-[#FFF0F5] px-4 py-3 text-sm leading-relaxed">
+          <div className="pop rounded-2xl bg-[var(--accent-soft)] px-4 py-3 text-sm leading-relaxed">
             링크를 복사했어요.
             {isMobile() ? (
               <>

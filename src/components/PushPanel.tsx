@@ -3,6 +3,7 @@ import { DEFAULT_PREFS, deviceSubscribed, disablePush, enablePush, isIOS, isStan
 
 const field = 'w-full rounded-2xl border-2 border-white bg-white px-4 py-2.5 outline-none focus:border-accent'
 const PRESETS = [
+  { title: '(광고) 기다리던 시리즈 공개예정 D-1', body: '지금 미리 알림 받고 바로 시청하세요' },
   { title: '알림', body: '새 소식이 {n}건 있어요' },
   { title: '배송 알림', body: '주문하신 상품 {n}건의 배송 상태가 바뀌었어요' },
   { title: '새 메시지', body: '확인하지 않은 메시지가 {n}건 있어요' },
@@ -69,13 +70,13 @@ export default function PushPanel() {
             }}
             className="squish rounded-full bg-white/80 px-3 py-1.5 text-xs"
           >
-            {p.title}
+            {p.title.length > 14 ? p.title.slice(0, 14) + '…' : p.title}
           </button>
         ))}
       </div>
       <label className="mb-1 block text-sm text-ink-soft">제목</label>
       <input value={title} onChange={(e) => setTitle(e.target.value)} maxLength={40} className={field} />
-      <label className="mb-1 mt-3 block text-sm text-ink-soft">내용 · {'{n}'} 자리에 안 읽은 개수</label>
+      <label className="mb-1 mt-3 block text-sm text-ink-soft">내용 · {'{n}'}을 넣으면 그 자리에 안 읽은 개수 (안 넣어도 돼요)</label>
       <input value={body} onChange={(e) => setBody(e.target.value)} maxLength={100} className={field} />
 
       {/* 미리보기 */}

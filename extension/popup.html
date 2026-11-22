@@ -1,0 +1,66 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8" />
+<style>
+  body { width: 320px; margin: 0; font: 13px/1.45 -apple-system, "Apple SD Gothic Neo", "Malgun Gothic", sans-serif; color: #222; background: #fafafa; }
+  main { padding: 14px; }
+  h1 { font-size: 15px; margin: 0 0 10px; }
+  label { display: block; margin: 10px 0 4px; color: #555; font-size: 12px; }
+  input[type=text], input[type=password], textarea, select { box-sizing: border-box; width: 100%; padding: 7px 9px; border: 1px solid #d6d6d6; border-radius: 8px; font: inherit; background: #fff; }
+  textarea { height: 52px; resize: vertical; }
+  .row { display: flex; gap: 6px; align-items: center; }
+  .icons button { font-size: 17px; width: 32px; height: 32px; border: 1px solid #ddd; border-radius: 8px; background: #fff; cursor: pointer; }
+  .icons button.on { border-color: #2f6fed; box-shadow: 0 0 0 2px #2f6fed33; }
+  .btn { width: 100%; margin-top: 12px; padding: 9px; border: 0; border-radius: 9px; background: #2f6fed; color: #fff; font: inherit; font-weight: 600; cursor: pointer; }
+  .btn.sub { background: #eee; color: #333; font-weight: 400; }
+  .msg { margin-top: 8px; font-size: 12px; color: #555; min-height: 1em; }
+  .box { background: #fff; border: 1px solid #e6e6e6; border-radius: 10px; padding: 10px; margin-bottom: 10px; }
+  .muted { color: #888; font-size: 11px; }
+  .switch { display: flex; justify-content: space-between; align-items: center; }
+</style>
+</head>
+<body>
+<main>
+  <h1>🔔 알림 띠</h1>
+
+  <section id="login" class="box" hidden>
+    <div class="muted">채팅 사이트의 <b>아이디·비밀번호</b>로 한 번 로그인하면 돼요. (나 탭 → 내 계정에서 등록한 것) 비밀번호는 저장하지 않아요.</div>
+    <label>아이디</label><input id="id" type="text" autocomplete="username" />
+    <label>비밀번호</label><input id="pw" type="password" autocomplete="current-password" />
+    <button id="doLogin" class="btn">로그인</button>
+  </section>
+
+  <section id="main" hidden>
+    <div class="box switch">
+      <span><span id="who"></span><br /><span class="muted">30초마다 새 메시지를 확인해요</span></span>
+      <label style="margin:0"><input id="enabled" type="checkbox" /> 켜기</label>
+    </div>
+
+    <label>제목 (굵은 글씨)</label>
+    <input id="title" type="text" maxlength="30" placeholder="예: 알림" />
+    <label>내용 · {n} 자리에 새 메시지 개수가 들어가요</label>
+    <textarea id="text" maxlength="80" placeholder="예: 새 소식이 {n}건 있어요"></textarea>
+
+    <label>아이콘</label>
+    <div class="row icons" id="icons"></div>
+
+    <div class="row" style="gap:8px">
+      <div style="flex:1"><label>모양</label><select id="style"></select></div>
+      <div style="flex:1"><label>띠 유지 시간</label>
+        <select id="seconds"><option value="5">5초</option><option value="8">8초</option><option value="15">15초</option><option value="0">누를 때까지</option></select>
+      </div>
+    </div>
+
+    <label>띠를 띄울 사이트 (비우면 모든 사이트 · 줄마다 하나)</label>
+    <textarea id="sites" placeholder="예:&#10;naver.com&#10;coupang.com"></textarea>
+
+    <button id="save" class="btn">저장</button>
+    <button id="test" class="btn sub">지금 보는 탭에 미리보기</button>
+    <div class="msg" id="msg"></div>
+    <button id="logout" class="btn sub" style="margin-top:14px">로그아웃</button>
+  </section>
+</main>
+<script type="module" src="popup.js"></script>
+</body>
+</html>

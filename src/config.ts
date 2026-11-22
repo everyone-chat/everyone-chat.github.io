@@ -6,3 +6,6 @@ export const SUPABASE_KEY = 'sb_publishable_eBXn4fB7b4fVbDQU9G6HGQ_erdnV2jq'
 // 사진·동영상 저장소 (Cloudflare Worker 주소, worker/media-worker.js)
 // 비워 두면 예전처럼 Supabase 저장소(1GB)에 올림
 export const MEDIA_URL = 'https://media.everyone-chat-app.workers.dev'
+
+// 휴대폰 알림: Supabase에 Edge Function "push"와 013_push.sql을 올린 뒤 true로
+export const PUSH_READY = false

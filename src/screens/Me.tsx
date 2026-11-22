@@ -2,6 +2,8 @@ import { useState } from 'react'
 import ProfileEditor from '../components/ProfileEditor'
 import FriendsPanel from '../components/FriendsPanel'
 import AccountPanel from '../components/AccountPanel'
+import PushPanel from '../components/PushPanel'
+import { PUSH_READY } from '../config'
 import { STATUSES, type Profile } from '../types'
 
 type Props = {
@@ -145,6 +147,8 @@ export default function Me({ me, onSaveProfile, onChangeStatus, onClaimAdmin, on
         </section>
 
         <AccountPanel />
+
+        {PUSH_READY && <PushPanel />}
 
         {settingsPanel}
 

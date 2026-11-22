@@ -7,6 +7,9 @@ import { applyTheme, read as readSettings } from './settings'
 applyTheme(readSettings().theme)
 import App from './App'
 
+// 휴대폰 알림용 서비스 워커
+if ('serviceWorker' in navigator) navigator.serviceWorker.register('/sw.js').catch(() => {})
+
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <App />

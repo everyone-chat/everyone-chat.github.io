@@ -1,5 +1,5 @@
 import { supabase } from './supabase'
-import { SUPABASE_URL } from './config'
+import { SUPABASE_KEY, SUPABASE_URL } from './config'
 
 // 휴대폰 알림 (웹 푸시)
 const FN = `${SUPABASE_URL}/functions/v1/push`
@@ -42,6 +42,7 @@ export async function enablePush(prefs: Omit<PushPrefs, 'enabled'>): Promise<str
     let sub = await reg.pushManager.getSubscription()
     if (!sub) sub = await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: b64ToBytes(publicKey) })
     const j = sub.toJSON()
+    resetEndpointCache()
     const { data: u } = await supabase.auth.getUser()
     const { error: e1 } = await supabase
       .from('push_subscriptions')
@@ -62,6 +63,7 @@ export async function disablePush(): Promise<void> {
   if (sub) {
     await supabase.from('push_subscriptions').delete().eq('endpoint', sub.endpoint)
     await sub.unsubscribe().catch(() => {})
+    resetEndpointCache()
   }
 }
 
@@ -81,4 +83,35 @@ export async function testPush(): Promise<string> {
   const d = await r.json().catch(() => ({}))
   if (!r.ok) return '시험 알림을 보내지 못했어요.'
   return d.sent ? '시험 알림을 보냈어요. 화면을 끄거나 다른 앱으로 가서 확인해 보세요.' : '알림 받을 기기가 없어요. 먼저 "알림 켜기"를 눌러 주세요.'
+}
+
+/** 이 기기에서 앱을 보고 있는 중이면 표시 (그동안 이 기기엔 알림 안 보냄), 숨기면 해제 */
+let myEndpoint: string | null | undefined
+async function endpoint() {
+  if (myEndpoint !== undefined) return myEndpoint
+  if (!pushSupported()) return (myEndpoint = null)
+  const reg = await navigator.serviceWorker.getRegistration()
+  const sub = await reg?.pushManager.getSubscription()
+  return (myEndpoint = sub?.endpoint ?? null)
+}
+export function resetEndpointCache() {
+  myEndpoint = undefined
+}
+export async function markDeviceActive(active: boolean) {
+  const ep = await endpoint().catch(() => null)
+  if (!ep) return
+  if (active) {
+    await supabase.from('push_subscriptions').update({ active_at: new Date().toISOString() }).eq('endpoint', ep)
+    return
+  }
+  // 화면을 떠날 때: 페이지가 닫혀도 전송되도록 keepalive
+  const { data } = await supabase.auth.getSession()
+  const token = data.session?.access_token
+  if (!token) return
+  fetch(`${SUPABASE_URL}/rest/v1/push_subscriptions?endpoint=eq.${encodeURIComponent(ep)}`, {
+    method: 'PATCH',
+    keepalive: true,
+    headers: { apikey: SUPABASE_KEY, Authorization: `Bearer ${token}`, 'Content-Type': 'application/json', Prefer: 'return=minimal' },
+    body: JSON.stringify({ active_at: null }),
+  }).catch(() => {})
 }

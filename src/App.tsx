@@ -10,6 +10,7 @@ import SecretScreen from './components/SecretScreen'
 import ViewSettings from './components/ViewSettings'
 import { FRAME_CLASS, useIdle, useSettings } from './settings'
 import { useViewportHeight } from './viewport'
+import { markDeviceActive } from './push'
 import BottomNav from './components/BottomNav'
 import Sky from './components/Sky'
 import { peerOf, roomOf, type Friendship, type Message, type Profile, type Tab } from './types'
@@ -116,6 +117,7 @@ export default function App() {
     const last_seen = new Date().toISOString()
     setProfiles((ps) => ps.map((p) => (p.id === myId ? { ...p, last_seen } : p)))
     await supabase.from('profiles').update({ last_seen }).eq('id', myId)
+    markDeviceActive(true)
   }, [myId])
 
   // ---------- 실시간 구독 + 접속 표시 ----------
@@ -225,9 +227,19 @@ export default function App() {
   }, [roomMessages, myId])
   const [visible, setVisible] = useState(() => document.visibilityState === 'visible')
   useEffect(() => {
-    const f = () => setVisible(document.visibilityState === 'visible')
+    const f = () => {
+      const v = document.visibilityState === 'visible'
+      setVisible(v)
+      // 앱을 떠나면 이 기기로 다시 알림이 오게
+      if (!v) markDeviceActive(false)
+    }
+    const leave = () => markDeviceActive(false)
     document.addEventListener('visibilitychange', f)
-    return () => document.removeEventListener('visibilitychange', f)
+    window.addEventListener('pagehide', leave)
+    return () => {
+      document.removeEventListener('visibilitychange', f)
+      window.removeEventListener('pagehide', leave)
+    }
   }, [])
   useEffect(() => {
     if (!myId || !readingRoom || !visible || !lastIncoming) return

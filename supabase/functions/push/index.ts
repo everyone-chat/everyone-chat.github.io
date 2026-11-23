@@ -28,18 +28,20 @@ async function keys() {
   return cached
 }
 
-async function sendTo(userId: string, n: number, test = false) {
+async function sendTo(userId: string, n: number, test = false, tag = 'msg') {
   const { data: pref } = await sb.from('push_prefs').select('enabled, title, body').eq('user_id', userId).maybeSingle()
   if (!test && pref && !pref.enabled) return 0
   const title = pref?.title || '알림'
   const body = (pref?.body || '새 소식이 {n}건 있어요').replaceAll('{n}', String(n))
-  const { data: subs } = await sb.from('push_subscriptions').select('endpoint, p256dh, auth').eq('user_id', userId)
+  const { data: subs } = await sb.from('push_subscriptions').select('endpoint, p256dh, auth, active_at').eq('user_id', userId)
   let sent = 0
   for (const s of subs ?? []) {
+    // 그 기기에서 지금 앱을 보고 있으면 그 기기엔 안 보냄 (다른 기기는 받음)
+    if (!test && s.active_at && Date.now() - new Date(s.active_at).getTime() < 75_000) continue
     try {
       await webpush.sendNotification(
         { endpoint: s.endpoint, keys: { p256dh: s.p256dh, auth: s.auth } },
-        JSON.stringify({ title, body, tag: 'msg' }),
+        JSON.stringify({ title, body, tag }),
         { TTL: 60 * 60 * 6, urgency: 'high' },
       )
       sent++
@@ -75,10 +77,6 @@ Deno.serve(async (req) => {
   if (!m || !m.room_a || !m.room_b) return json({ skipped: 'none' })
   const to = m.room_a === m.user_id ? m.room_b : m.room_a
 
-  // 지금 앱을 보고 있는 사람에게는 안 보냄 (마지막 활동 70초 이내)
-  const { data: p } = await sb.from('profiles').select('last_seen').eq('id', to).maybeSingle()
-  if (p?.last_seen && Date.now() - new Date(p.last_seen).getTime() < 70_000) return json({ skipped: 'active' })
-
   // 그 대화에서 안 읽은 개수
   const { data: r } = await sb.from('chat_reads').select('last_read_id').eq('user_id', to).eq('peer_id', m.user_id).maybeSingle()
   const { count } = await sb
@@ -91,5 +89,5 @@ Deno.serve(async (req) => {
   // 오래된 보낸 기록 정리
   if (Math.random() < 0.05) await sb.from('push_sent').delete().lt('at', new Date(Date.now() - 86400_000).toISOString())
 
-  return json({ sent: await sendTo(to, count ?? 1) })
+  return json({ sent: await sendTo(to, count ?? 1, false, `msg-${id}`) })
 })

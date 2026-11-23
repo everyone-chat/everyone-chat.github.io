@@ -89,5 +89,5 @@ Deno.serve(async (req) => {
   // 오래된 보낸 기록 정리
   if (Math.random() < 0.05) await sb.from('push_sent').delete().lt('at', new Date(Date.now() - 86400_000).toISOString())
 
-  return json({ sent: await sendTo(to, count ?? 1, false, `msg-${id}`) })
+  return json({ sent: await sendTo(to, count ?? 1) })
 })

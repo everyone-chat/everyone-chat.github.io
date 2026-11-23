@@ -122,7 +122,7 @@ export default function Entry({ onJoined }: Props) {
       <div className="relative mx-auto flex min-h-full max-w-md flex-col justify-center px-5 py-10">
         <div className="mb-6 text-center">
           <div className="mb-2 text-5xl">🫧</div>
-          <h1 className="font-cute text-4xl text-ink">우리 광장</h1>
+          <h1 className="font-cute text-4xl text-ink">모두의 채팅</h1>
           <p className="mt-1 text-ink-soft">친구들만 들어올 수 있는 작은 공간</p>
         </div>
 

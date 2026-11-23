@@ -170,8 +170,10 @@ update private.settings set value = '새-코드' where key = 'invite_code';
 - 실제 회사 프로그램 로고·이름은 쓰지 않은 일반적인 표·메일 모양
 
 
-## 휴대폰 알림 (준비 중: supabase/013_push.sql, supabase/functions/push, src/push.ts)
+## 휴대폰 알림 (supabase/013_push.sql, supabase/functions/push, src/push.ts, public/sw.js)
 
 - 새 메시지가 오면 휴대폰 위쪽 알림으로, **내가 정한 제목·내용**만 표시 (보낸 사람·내용 안 나옴, 앱을 보고 있으면 안 보냄)
-- 남은 설정: Supabase Edge Function `push` 배포(Verify JWT 끔) → 013_push.sql 실행 → `src/config.ts`의 `PUSH_READY = true`
+- 원하는 사람만: 나 탭 → 📱 휴대폰 알림 → "이 기기 알림 켜기" (기기마다 따로, 기본은 꺼짐)
+- 알림을 눌러도 채팅으로 이동하지 않고 그냥 닫힘
+- Edge Function `push` 배포됨(Verify JWT 끔), 서명 키는 함수가 처음 실행 때 직접 만들어 서버 전용 테이블(push_server)에 보관
 - 아이폰은 사파리 "홈 화면에 추가" 후 그 아이콘으로 열어야 알림 가능, 알림 앱 이름은 "알림"

@@ -8,4 +8,4 @@ export const SUPABASE_KEY = 'sb_publishable_eBXn4fB7b4fVbDQU9G6HGQ_erdnV2jq'
 export const MEDIA_URL = 'https://media.everyone-chat-app.workers.dev'
 
 // 휴대폰 알림: Supabase에 Edge Function "push"와 013_push.sql을 올린 뒤 true로
-export const PUSH_READY = false
+export const PUSH_READY = true

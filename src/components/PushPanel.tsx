@@ -52,6 +52,10 @@ export default function PushPanel() {
         새 메시지가 오면 휴대폰 위쪽에 <b>내가 정한 문구</b>로만 알림이 떠요. 보낸 사람이나 내용은 나오지 않고, 앱을 보고 있을 땐 오지 않아요.
       </p>
 
+      <div className={`mb-4 rounded-2xl px-4 py-2.5 text-sm ${on ? 'bg-[#E3F7EC] text-[#1d7a46]' : 'bg-white/80 text-ink-soft'}`}>
+        이 기기: {on ? '🔔 알림 받는 중' : '🔕 꺼짐 — 아래 "이 기기 알림 켜기"를 눌러야 받아요'}
+      </div>
+
       {iosNeedsHome && (
         <div className="mb-4 rounded-2xl bg-[var(--accent-soft)] px-4 py-3 text-xs leading-relaxed">
           아이폰은 먼저 <b>사파리 공유 버튼(□↑) → 홈 화면에 추가</b>를 한 뒤, 홈 화면에 생긴 <b>"알림"</b> 아이콘으로 열어서 여기서 알림을 켜 주세요.
@@ -103,7 +107,7 @@ export default function PushPanel() {
           onClick={async () => {
             setBusy(true)
             const ok = await savePrefs({ enabled: true, title: title.trim() || '알림', body: body.trim() || DEFAULT_PREFS.body })
-            setMsg(ok ? '문구를 저장했어요.' : '저장에 실패했어요.')
+            setMsg(ok ? (on ? '문구를 저장했어요.' : '문구를 저장했어요. 알림을 받으려면 "이 기기 알림 켜기"도 눌러 주세요.') : '저장에 실패했어요.')
             setBusy(false)
           }}
           disabled={busy}

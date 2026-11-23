@@ -34,7 +34,12 @@ export async function deviceSubscribed() {
 export async function enablePush(prefs: Omit<PushPrefs, 'enabled'>): Promise<string | null> {
   if (!pushSupported()) return isIOS() ? '아이폰은 사파리에서 "홈 화면에 추가"한 뒤, 홈 화면 아이콘으로 열어야 알림을 받을 수 있어요.' : '이 브라우저는 알림을 지원하지 않아요.'
   const perm = await Notification.requestPermission()
-  if (perm !== 'granted') return '알림 권한이 꺼져 있어요. 휴대폰 설정에서 이 사이트(또는 앱)의 알림을 허용해 주세요.'
+  if (perm !== 'granted') {
+    if (/SamsungBrowser/i.test(navigator.userAgent))
+      return '삼성 인터넷에서 이 사이트 알림이 막혀 있어요. 삼성 인터넷 ≡ 메뉴 → 설정 → 사이트 및 다운로드 → 알림(사이트 권한) → everyone-chat.github.io 를 "허용"으로 바꾸고, 비밀 모드가 아닌 일반 탭에서 다시 눌러 주세요. 안 되면 크롬으로 열어서 켜도 돼요.'
+    if (isIOS()) return '알림이 막혀 있어요. 아이폰 설정 → 알림 → "알림"(홈 화면 앱)에서 알림 허용을 켜 주세요.'
+    return '이 사이트 알림이 막혀 있어요. 주소창 왼쪽 자물쇠(또는 ⋮ → 설정 → 사이트 설정 → 알림)에서 everyone-chat.github.io 를 "허용"으로 바꾼 뒤 다시 눌러 주세요.'
+  }
   try {
     const reg = (await navigator.serviceWorker.getRegistration()) ?? (await navigator.serviceWorker.register('/sw.js'))
     await navigator.serviceWorker.ready

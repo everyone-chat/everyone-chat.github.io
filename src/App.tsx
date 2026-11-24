@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { supabase } from './supabase'
-import { deleteMedia, sweepDeletedImages, uploadImage } from './images'
+import { deleteMedia, isVideoFile, sweepDeletedImages, uploadErrorText, uploadImage } from './images'
 import Entry from './screens/Entry'
 import Plaza from './screens/Plaza'
 import Chat from './screens/Chat'
@@ -393,15 +393,15 @@ export default function App() {
     return true
   }
 
-  async function send(text: string, file: File | null) {
-    if (!myId || !activePeer) return false
+  async function send(text: string, file: File | null, onProgress?: (r: number) => void): Promise<true | string> {
+    if (!myId || !activePeer) return '전송에 실패했어요.'
     let image_path: string | null = null
     if (file) {
       try {
-        image_path = await uploadImage(myId, file)
+        image_path = await uploadImage(myId, file, onProgress)
       } catch (err) {
         console.error(err)
-        return false
+        return uploadErrorText(err, isVideoFile(file))
       }
     }
     const { data, error } = await supabase
@@ -413,7 +413,7 @@ export default function App() {
       console.error(error)
       // 메시지 저장에 실패하면 먼저 올라간 사진 파일도 지움
       if (image_path) deleteMedia(image_path)
-      return false
+      return '전송에 실패했어요. 다시 시도해 주세요.'
     }
     const m = data as Message
     setMessages((ms) => (ms.some((x) => x.id === m.id) ? ms : [...ms, m]))

@@ -2,7 +2,7 @@ import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import Avatar from '../components/Avatar'
 import ChatImage, { GalleryThumb } from '../components/ChatImage'
 import { LinkSheet, LinkText } from '../components/LinkText'
-import { MAX_VIDEO_MB, imageUrl, isVideoFile, isVideoPath } from '../images'
+import { MAX_VIDEO_MB, imageUrl, isVideoFile, isVideoPath, videoType } from '../images'
 import type { ChatSkin } from '../settings'
 import { isOnline, type Message, type Profile } from '../types'
 
@@ -16,7 +16,7 @@ type Props = {
   loading: boolean
   draft: string
   onDraftChange: (v: string) => void
-  onSend: (text: string, file: File | null) => Promise<boolean>
+  onSend: (text: string, file: File | null, onProgress?: (r: number) => void) => Promise<true | string>
   onDelete: (id: number) => Promise<boolean>
   onClearAll: () => Promise<boolean>
   /** 상대가 읽은 마지막 메시지 번호 (이보다 큰 내 메시지는 '1' 표시) */
@@ -161,6 +161,7 @@ export default function Chat({ me, profileMap, messages, peer, now, onBack, load
   const inputRef = useRef<HTMLInputElement>(null)
   const nearBottom = useRef(true)
   const [sending, setSending] = useState(false)
+  const [progress, setProgress] = useState<number | null>(null)
   const [error, setError] = useState('')
 
   // 새 메시지가 오면 맨 아래로 (위로 스크롤해서 읽는 중이면 그대로 둠)
@@ -192,13 +193,16 @@ export default function Chat({ me, profileMap, messages, peer, now, onBack, load
     if ((!text && !file) || sending) return
     setSending(true)
     setError('')
-    const ok = await onSend(text, file)
+    setProgress(0)
+    const res = await onSend(text, file, (r) => setProgress(Math.min(1, r)))
     setSending(false)
+    setProgress(null)
+    const ok = res === true
     if (ok) {
       onDraftChange('')
       setFile(null)
       if (document.activeElement !== inputRef.current) inputRef.current?.focus({ preventScroll: true })
-    } else setError(file ? `${isVideoFile(file) ? '동영상' : '사진'} 전송에 실패했어요. 다시 시도해 주세요.` : '전송에 실패했어요. 다시 시도해 주세요.')
+    } else setError(res as string)
   }
 
   // ---------- 채팅방 모양별 스타일 ----------
@@ -528,20 +532,27 @@ export default function Chat({ me, profileMap, messages, peer, now, onBack, load
             <button type="button" onClick={() => setFile(null)} className="rounded-full bg-white px-3 py-1 text-xs text-ink-soft">
               취소
             </button>
-            {sending && <span className="text-xs text-ink-soft">{file && isVideoFile(file) ? '동영상 올리는 중… (크면 조금 걸려요)' : '사진 보내는 중…'}</span>}
+            {sending && (
+              <span className="flex min-w-0 flex-1 flex-col gap-1 text-xs text-ink-soft">
+                {file && isVideoFile(file) ? '동영상 올리는 중' : '사진 보내는 중'} {progress != null ? `${Math.round(progress * 100)}%` : '…'}
+                <span className="h-1.5 w-full overflow-hidden rounded-full bg-white">
+                  <span className="block h-full bg-accent transition-[width]" style={{ width: `${Math.round((progress ?? 0) * 100)}%` }} />
+                </span>
+              </span>
+            )}
           </div>
         )}
         <div className="flex items-center gap-2">
           <input
             ref={fileRef}
             type="file"
-            accept="image/*,video/mp4,video/quicktime,video/webm"
+            accept="image/*,video/*"
             className="hidden"
             onChange={(e) => {
               const f = e.target.files?.[0] ?? null
               e.target.value = ''
               if (f && !f.type.startsWith('image/') && !isVideoFile(f)) return setError('사진이나 동영상만 보낼 수 있어요.')
-              if (f && isVideoFile(f) && !/^video\/(mp4|quicktime|webm)$/.test(f.type)) return setError('mp4·mov·webm 동영상만 보낼 수 있어요.')
+              if (f && isVideoFile(f) && !videoType(f)) return setError('mp4·mov·webm 동영상만 보낼 수 있어요.')
               if (f && isVideoFile(f) && f.size > MAX_VIDEO_MB * 1024 * 1024)
                 return setError(`동영상은 ${MAX_VIDEO_MB}MB까지 보낼 수 있어요. (지금 ${Math.round(f.size / 1024 / 1024)}MB)`)
               setError('')
